@@ -5,9 +5,9 @@ spring:
     name: paf_project
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/smartcampus
-    username: postgres
-    password: postgres_password
+    url: jdbc:postgresql://ep-ancient-bread-a10l45fg-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_QcnS5uL0seYq
     driver-class-name: org.postgresql.Driver
 
   jpa:
