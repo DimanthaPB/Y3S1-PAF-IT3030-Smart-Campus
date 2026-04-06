@@ -1,36 +1,41 @@
 package com.smartcampus.paf_project.models;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "notifications")
+@Builder
 public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String recipientEmail; // කාටද මේක යන්නේ (User email)
-    
-    private String title;
-    
-    @Column(columnDefinition = "TEXT")
-    private String message;
-    
-    private boolean isRead = false; // කියවලාද නැද්ද කියලා බලන්න
-    
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    public Notification(String recipientEmail, String title, String message) {
-        this.recipientEmail = recipientEmail;
-        this.title = title;
-        this.message = message;
-    }
+    @Column(nullable = false)
+    private String message;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean isRead = false;
+
+    // e.g., "BOOKING", "TICKET"
+    private String type;
+
+    // Optional ID linking to the specific booking/ticket
+    private Long referenceId;
+
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

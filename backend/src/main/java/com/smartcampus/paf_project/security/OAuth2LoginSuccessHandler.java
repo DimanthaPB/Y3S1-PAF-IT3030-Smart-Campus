@@ -1,53 +1,66 @@
 package com.smartcampus.paf_project.security;
 
-import com.smartcampus.paf_project.models.ERole;
+import com.smartcampus.paf_project.models.NotificationPreference;
 import com.smartcampus.paf_project.models.Role;
 import com.smartcampus.paf_project.models.User;
-import com.smartcampus.paf_project.repositories.RoleRepository;
 import com.smartcampus.paf_project.repositories.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
-import org.springframework.stereotype.Component;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 
 @Component
-public class OAuth2LoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
+public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private RoleRepository roleRepository;
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
+    public OAuth2LoginSuccessHandler(JwtUtil jwtUtil, UserRepository userRepository) {
+        this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
+    }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws ServletException, IOException {
-        
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
         String name = oAuth2User.getAttribute("name");
+        String avatar = oAuth2User.getAttribute("picture");
 
-        if (!userRepository.existsByEmail(email)) {
-            User newUser = new User(name, email, ""); 
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            user = User.builder()
+                    .email(email)
+                    .name(name)
+                    .avatarUrl(avatar)
+                    .provider("google")
+                    .role(Role.USER) // Default role
+                    .build();
 
-            Set<Role> roles = new HashSet<>();
-            Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-                    .orElseGet(() -> roleRepository.save(new Role(ERole.ROLE_USER))); 
-            roles.add(userRole);
+            // Default preferences
+            NotificationPreference prefs = NotificationPreference.builder()
+                    .receiveBookingAlerts(true)
+                    .receiveSystemAlerts(true)
+                    .receiveTicketAlerts(true)
+                    .user(user)
+                    .build();
+            user.setNotificationPreference(prefs);
 
-            newUser.setRoles(roles);
-            userRepository.save(newUser);
+            userRepository.save(user);
         }
 
-        this.setAlwaysUseDefaultTargetUrl(true);
-        this.setDefaultTargetUrl("/api/auth/success");
-        super.onAuthenticationSuccess(request, response, authentication);
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        // Redirect to frontend with token as URL param
+        getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/oauth2/redirect?token=" + token);
     }
 }

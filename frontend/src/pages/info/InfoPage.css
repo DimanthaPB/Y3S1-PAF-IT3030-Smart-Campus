@@ -1,0 +1,149 @@
+.info-page-container {
+  max-width: 1000px;
+  margin: 120px auto 40px auto; /* 120px top to clear fixed navbar */
+  padding: 0 24px;
+}
+
+.info-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.info-header h1 {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+.info-header p {
+  color: var(--color-text-secondary);
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.info-content {
+  color: var(--color-text-primary);
+  line-height: 1.8;
+}
+
+.info-content h2 {
+  font-size: 1.8rem;
+  margin-top: 40px;
+  margin-bottom: 20px;
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+
+.info-content h3 {
+  font-size: 1.3rem;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-content p {
+  margin-bottom: 20px;
+  color: var(--color-text-secondary);
+}
+
+.info-content ul {
+  margin-bottom: 20px;
+  padding-left: 20px;
+  color: var(--color-text-secondary);
+}
+
+.info-content li {
+  margin-bottom: 8px;
+}
+
+/* FAQ Specific Styles */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.faq-item {
+  padding: 24px;
+}
+
+.faq-item h3 {
+  margin-top: 0;
+  color: var(--color-primary-light);
+}
+
+/* Contact Specific Styles */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.contact-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.contact-method {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.contact-icon {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-primary-light);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.contact-method div h4 {
+  margin: 0 0 4px 0;
+  color: white;
+}
+
+.contact-method div p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: white;
+  font-family: inherit;
+  transition: border-color 0.3s;
+}
+
+.contact-form textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 768px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+}
