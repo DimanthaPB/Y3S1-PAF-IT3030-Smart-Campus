@@ -1,5 +1,6 @@
 package com.smartcampus.paf_project.services;
 
+import com.smartcampus.paf_project.exceptions.BookingConflictException;
 import com.smartcampus.paf_project.models.Booking;
 import com.smartcampus.paf_project.models.BookingStatus;
 import com.smartcampus.paf_project.repositories.BookingRepository;
@@ -31,7 +32,7 @@ public class BookingService {
         );
 
         if (hasConflict) {
-            throw new RuntimeException("Booking conflict detected for this facility and time range.");
+            throw new BookingConflictException("Booking conflict detected for this facility and time range.");
         }
 
         booking.setStatus(BookingStatus.PENDING);
