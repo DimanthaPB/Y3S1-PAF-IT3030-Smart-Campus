@@ -33,6 +33,44 @@ public class ResourceController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<Resource>> searchResources(
+        @RequestParam(required = false) Resource.ResourceType type,
+        @RequestParam(required = false) String location,
+        @RequestParam(required = false) Resource.ResourceStatus status,
+        @RequestParam(required = false) Integer capacity) {
+
+        List<Resource> resources = resourceRepository.findAll();
+
+        if (type != null) {
+        resources = resources.stream()
+                .filter(resource -> resource.getType() == type)
+                .toList();
+        }
+
+        if (location != null && !location.isBlank()) {
+        resources = resources.stream()
+                .filter(resource -> resource.getLocation() != null &&
+                        resource.getLocation().toLowerCase().contains(location.toLowerCase()))
+                .toList();
+        }
+
+        if (status != null) {
+        resources = resources.stream()
+                .filter(resource -> resource.getStatus() == status)
+                .toList();
+        }
+
+        if (capacity != null) {
+        resources = resources.stream()
+                .filter(resource -> resource.getCapacity() != null &&
+                        resource.getCapacity() >= capacity)
+                .toList();
+        }
+
+        return ResponseEntity.ok(resources);
+    }
+
     @PostMapping
     public ResponseEntity<Resource> createResource(@Valid @RequestBody Resource resource) {
         Resource savedResource = resourceRepository.save(resource);
