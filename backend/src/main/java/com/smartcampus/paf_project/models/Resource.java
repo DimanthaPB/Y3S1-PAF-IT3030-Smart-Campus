@@ -1,9 +1,15 @@
 package com.smartcampus.paf_project.models;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "resources")
@@ -35,12 +41,24 @@ public class Resource {
     @Column(nullable = false)
     private ResourceType type;
 
-    @Min(value = 0, message = "Capacity cannot be negative")
+    @Min(value = 0, message = "Capacity cannot be less than 0")
     private Integer capacity;
 
     @NotBlank(message = "Location is required")
     @Column(nullable = false)
     private String location;
+
+    @NotNull(message = "Availability date is required")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate availabilityDate;
+
+    @NotNull(message = "Availability start time is required")
+    @JsonFormat(pattern = "HH:mm")
+    private LocalTime availabilityStart;
+
+    @NotNull(message = "Availability end time is required")
+    @JsonFormat(pattern = "HH:mm")
+    private LocalTime availabilityEnd;
 
     @NotNull(message = "Resource status is required")
     @Enumerated(EnumType.STRING)
@@ -54,12 +72,16 @@ public class Resource {
     }
 
     public Resource(Long id, String name, ResourceType type, Integer capacity, String location,
+                    LocalDate availabilityDate, LocalTime availabilityStart, LocalTime availabilityEnd,
                     ResourceStatus status, String description) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.capacity = capacity;
         this.location = location;
+        this.availabilityDate = availabilityDate;
+        this.availabilityStart = availabilityStart;
+        this.availabilityEnd = availabilityEnd;
         this.status = status;
         this.description = description;
     }
@@ -104,6 +126,30 @@ public class Resource {
         this.location = location;
     }
 
+    public LocalDate getAvailabilityDate() {
+        return availabilityDate;
+    }
+
+    public void setAvailabilityDate(LocalDate availabilityDate) {
+        this.availabilityDate = availabilityDate;
+    }
+
+    public LocalTime getAvailabilityStart() {
+        return availabilityStart;
+    }
+
+    public void setAvailabilityStart(LocalTime availabilityStart) {
+        this.availabilityStart = availabilityStart;
+    }
+
+    public LocalTime getAvailabilityEnd() {
+        return availabilityEnd;
+    }
+
+    public void setAvailabilityEnd(LocalTime availabilityEnd) {
+        this.availabilityEnd = availabilityEnd;
+    }
+
     public ResourceStatus getStatus() {
         return status;
     }
@@ -118,5 +164,27 @@ public class Resource {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    @AssertTrue(message = "Capacity must be greater than 0 for lecture halls, labs, and meeting rooms")
+    @Transient
+    @JsonIgnore
+    public boolean isCapacityValidForType() {
+        if (type == null) {
+            return true;
+        }
+
+        if (type == ResourceType.EQUIPMENT) {
+            return capacity == null || capacity >= 0;
+        }
+
+        return capacity != null && capacity > 0;
+    }
+
+    @AssertTrue(message = "Availability start time must be earlier than availability end time")
+    @Transient
+    @JsonIgnore
+    public boolean isAvailabilityWindowValid() {
+        return availabilityStart == null || availabilityEnd == null || availabilityStart.isBefore(availabilityEnd);
     }
 }

@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,7 +40,10 @@ public class ResourceController {
         @RequestParam(required = false) Resource.ResourceType type,
         @RequestParam(required = false) String location,
         @RequestParam(required = false) Resource.ResourceStatus status,
-        @RequestParam(required = false) Integer capacity) {
+        @RequestParam(required = false) Integer capacity,
+        @RequestParam(required = false) LocalDate availabilityDate,
+        @RequestParam(required = false) LocalTime availabilityStart,
+        @RequestParam(required = false) LocalTime availabilityEnd) {
 
         List<Resource> resources = resourceRepository.findAll();
 
@@ -68,6 +73,27 @@ public class ResourceController {
                 .toList();
         }
 
+        if (availabilityDate != null) {
+        resources = resources.stream()
+                .filter(resource -> resource.getAvailabilityDate() != null &&
+                        resource.getAvailabilityDate().isEqual(availabilityDate))
+                .toList();
+        }
+
+        if (availabilityStart != null) {
+        resources = resources.stream()
+                .filter(resource -> resource.getAvailabilityStart() != null &&
+                        !resource.getAvailabilityStart().isAfter(availabilityStart))
+                .toList();
+        }
+
+        if (availabilityEnd != null) {
+        resources = resources.stream()
+                .filter(resource -> resource.getAvailabilityEnd() != null &&
+                        !resource.getAvailabilityEnd().isBefore(availabilityEnd))
+                .toList();
+        }
+
         return ResponseEntity.ok(resources);
     }
 
@@ -86,6 +112,9 @@ public class ResourceController {
                     resource.setType(updatedResource.getType());
                     resource.setCapacity(updatedResource.getCapacity());
                     resource.setLocation(updatedResource.getLocation());
+                    resource.setAvailabilityDate(updatedResource.getAvailabilityDate());
+                    resource.setAvailabilityStart(updatedResource.getAvailabilityStart());
+                    resource.setAvailabilityEnd(updatedResource.getAvailabilityEnd());
                     resource.setStatus(updatedResource.getStatus());
                     resource.setDescription(updatedResource.getDescription());
 
