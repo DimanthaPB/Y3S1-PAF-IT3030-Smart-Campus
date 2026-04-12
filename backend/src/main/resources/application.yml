@@ -36,3 +36,6 @@ app:
     expirationMs: 86400000 # 24 hours
   frontend:
     url: http://localhost:5173
+
+file:
+  upload-dir: uploads
