@@ -161,12 +161,15 @@ function StatusBadge({ status }) {
 }
 
 function Resources() {
+  const today = new Date().toISOString().split("T")[0];
+
   const emptyForm = {
     name: "",
     type: "LECTURE_HALL",
     capacity: "",
     location: "",
-    availabilityDate: "",
+    availableFromDate: "",
+    availableToDate: "",
     availabilityStart: "",
     availabilityEnd: "",
     status: "ACTIVE",
@@ -184,7 +187,8 @@ function Resources() {
     status: "",
     location: "",
     capacity: "",
-    availabilityDate: "",
+    availableFromDate: "",
+    availableToDate: "",
     availabilityStart: "",
     availabilityEnd: "",
   });
@@ -248,9 +252,31 @@ function Resources() {
         setLoading(false);
         return;
       }
+      if (filters.availableFromDate && filters.availableFromDate < today) {
+        setError("Available from date cannot be in the past.");
+        setLoading(false);
+        return;
+      }
+      if (filters.availableToDate && filters.availableToDate < today) {
+        setError("Available to date cannot be in the past.");
+        setLoading(false);
+        return;
+      }
+      if (
+        filters.availableFromDate &&
+        filters.availableToDate &&
+        filters.availableFromDate > filters.availableToDate
+      ) {
+        setError("Available to date must be on or after the available from date.");
+        setLoading(false);
+        return;
+      }
       if (filters.capacity !== "") params.capacity = Number(filters.capacity);
-      if (filters.availabilityDate) {
-        params.availabilityDate = filters.availabilityDate;
+      if (filters.availableFromDate) {
+        params.availableFromDate = filters.availableFromDate;
+      }
+      if (filters.availableToDate) {
+        params.availableToDate = filters.availableToDate;
       }
       if (filters.availabilityStart) {
         params.availabilityStart = filters.availabilityStart;
@@ -275,7 +301,8 @@ function Resources() {
       status: "",
       location: "",
       capacity: "",
-      availabilityDate: "",
+      availableFromDate: "",
+      availableToDate: "",
       availabilityStart: "",
       availabilityEnd: "",
     });
@@ -294,8 +321,25 @@ function Resources() {
       nextErrors.location = "Location is required.";
     }
 
-    if (!form.availabilityDate) {
-      nextErrors.availabilityDate = "Availability date is required.";
+    if (!form.availableFromDate) {
+      nextErrors.availableFromDate = "Available from date is required.";
+    } else if (form.availableFromDate < today) {
+      nextErrors.availableFromDate = "Available from date cannot be in the past.";
+    }
+
+    if (!form.availableToDate) {
+      nextErrors.availableToDate = "Available to date is required.";
+    } else if (form.availableToDate < today) {
+      nextErrors.availableToDate = "Available to date cannot be in the past.";
+    }
+
+    if (
+      form.availableFromDate &&
+      form.availableToDate &&
+      form.availableFromDate > form.availableToDate
+    ) {
+      nextErrors.availableToDate =
+        "Available to date must be on or after the available from date.";
     }
 
     if (!form.availabilityStart) {
@@ -360,6 +404,21 @@ function Resources() {
       delete nextErrors.availabilityWindowValid;
     }
 
+    if (responseErrors.availabilityDateRangeValid) {
+      nextErrors.availableToDate = responseErrors.availabilityDateRangeValid;
+      delete nextErrors.availabilityDateRangeValid;
+    }
+
+    if (responseErrors.availableFromDateNotInPast) {
+      nextErrors.availableFromDate = responseErrors.availableFromDateNotInPast;
+      delete nextErrors.availableFromDateNotInPast;
+    }
+
+    if (responseErrors.availableToDateNotInPast) {
+      nextErrors.availableToDate = responseErrors.availableToDateNotInPast;
+      delete nextErrors.availableToDateNotInPast;
+    }
+
     return nextErrors;
   };
 
@@ -410,7 +469,8 @@ function Resources() {
       type: resource.type || "LECTURE_HALL",
       capacity: resource.capacity ?? "",
       location: resource.location || "",
-      availabilityDate: resource.availabilityDate || "",
+      availableFromDate: resource.availableFromDate || "",
+      availableToDate: resource.availableToDate || "",
       availabilityStart: resource.availabilityStart || "",
       availabilityEnd: resource.availabilityEnd || "",
       status: resource.status || "ACTIVE",
@@ -666,15 +726,35 @@ function Resources() {
                 />
               </Field>
 
-              <Field label="Availability Date">
-                <input
-                  name="availabilityDate"
-                  type="date"
-                  value={filters.availabilityDate}
-                  onChange={handleFilterChange}
-                  style={fieldStyles}
-                />
-              </Field>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gap: "16px",
+                }}
+              >
+                <Field label="Available From Date">
+                  <input
+                    name="availableFromDate"
+                    type="date"
+                    min={today}
+                    value={filters.availableFromDate}
+                    onChange={handleFilterChange}
+                    style={fieldStyles}
+                  />
+                </Field>
+
+                <Field label="Available To Date">
+                  <input
+                    name="availableToDate"
+                    type="date"
+                    min={today}
+                    value={filters.availableToDate}
+                    onChange={handleFilterChange}
+                    style={fieldStyles}
+                  />
+                </Field>
+              </div>
 
               <div
                 style={{
@@ -789,15 +869,28 @@ function Resources() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
                   gap: "16px",
                 }}
               >
-                <Field label="Availability Date" error={formErrors.availabilityDate}>
+                <Field label="Available From Date" error={formErrors.availableFromDate}>
                   <input
-                    name="availabilityDate"
+                    name="availableFromDate"
                     type="date"
-                    value={form.availabilityDate}
+                    min={today}
+                    value={form.availableFromDate}
+                    onChange={handleChange}
+                    required
+                    style={fieldStyles}
+                  />
+                </Field>
+
+                <Field label="Available To Date" error={formErrors.availableToDate}>
+                  <input
+                    name="availableToDate"
+                    type="date"
+                    min={today}
+                    value={form.availableToDate}
                     onChange={handleChange}
                     required
                     style={fieldStyles}
@@ -875,6 +968,70 @@ function Resources() {
             description="A quick operational view of every resource currently available in the system."
           />
 
+          {!loading && resources.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: "999px",
+                  background: "rgba(30, 41, 59, 0.72)",
+                  border: "1px solid rgba(148, 163, 184, 0.16)",
+                  color: "#e2e8f0",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                }}
+              >
+                Showing {resources.length} resources
+              </div>
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: "999px",
+                  background: "rgba(16, 185, 129, 0.12)",
+                  border: "1px solid rgba(74, 222, 128, 0.18)",
+                  color: "#dcfce7",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                }}
+              >
+                {activeCount} active
+              </div>
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: "999px",
+                  background: "rgba(239, 68, 68, 0.12)",
+                  border: "1px solid rgba(248, 113, 113, 0.18)",
+                  color: "#fecaca",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                }}
+              >
+                {outOfServiceCount} out of service
+              </div>
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: "999px",
+                  background: "rgba(148, 163, 184, 0.12)",
+                  border: "1px solid rgba(148, 163, 184, 0.18)",
+                  color: "#e2e8f0",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                }}
+              >
+                {inactiveCount} inactive
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div style={{ color: "#93c5fd", fontSize: "15px" }}>Loading resources...</div>
           ) : resources.length === 0 ? (
@@ -902,23 +1059,38 @@ function Resources() {
                   key={resource.id}
                   style={{
                     background:
-                      "linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(12, 18, 32, 0.92) 100%)",
-                    border: "1px solid rgba(148, 163, 184, 0.16)",
-                    borderRadius: "22px",
-                    padding: "20px",
+                      "linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 16, 28, 0.94) 100%)",
+                    border: "1px solid rgba(96, 165, 250, 0.12)",
+                    borderRadius: "24px",
+                    padding: "22px",
                     display: "grid",
-                    gap: "16px",
-                    boxShadow: "0 18px 40px rgba(2, 8, 23, 0.22)",
+                    gap: "18px",
+                    alignContent: "start",
+                    boxShadow: "0 20px 44px rgba(2, 8, 23, 0.24)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: "20px", color: "#f8fafc" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start" }}>
+                    <div style={{ display: "grid", gap: "10px" }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          width: "fit-content",
+                          padding: "7px 11px",
+                          borderRadius: "999px",
+                          background: "rgba(56, 189, 248, 0.1)",
+                          border: "1px solid rgba(125, 211, 252, 0.18)",
+                          color: "#7dd3fc",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          letterSpacing: "0.03em",
+                        }}
+                      >
+                        {resource.type.replaceAll("_", " ")}
+                      </span>
+                      <h3 style={{ margin: 0, fontSize: "19px", color: "#f8fafc", lineHeight: 1.25 }}>
                         {resource.name}
                       </h3>
-                      <div style={{ marginTop: "8px", color: "#7dd3fc", fontSize: "13px" }}>
-                        {resource.type.replaceAll("_", " ")}
-                      </div>
                     </div>
                     <StatusBadge status={resource.status} />
                   </div>
@@ -932,56 +1104,75 @@ function Resources() {
                   >
                     <div
                       style={{
-                        padding: "12px",
-                        borderRadius: "16px",
-                        background: "rgba(30, 41, 59, 0.62)",
+                        padding: "14px",
+                        borderRadius: "18px",
+                        background: "rgba(30, 41, 59, 0.56)",
+                        border: "1px solid rgba(148, 163, 184, 0.1)",
                       }}
                     >
                       <div style={{ color: "#94a3b8", fontSize: "12px" }}>Capacity</div>
-                      <div style={{ marginTop: "6px", fontWeight: 700 }}>
+                      <div style={{ marginTop: "6px", fontWeight: 700, fontSize: "22px", color: "#f8fafc" }}>
                         {resource.capacity ?? "N/A"}
                       </div>
                     </div>
                     <div
                       style={{
-                        padding: "12px",
-                        borderRadius: "16px",
-                        background: "rgba(30, 41, 59, 0.62)",
+                        padding: "14px",
+                        borderRadius: "18px",
+                        background: "rgba(30, 41, 59, 0.56)",
+                        border: "1px solid rgba(148, 163, 184, 0.1)",
                       }}
                     >
-                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>Availability Date</div>
-                      <div style={{ marginTop: "6px", fontWeight: 700 }}>
-                        {resource.availabilityDate || "Not set"}
+                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>Date Range</div>
+                      <div style={{ marginTop: "6px", fontWeight: 700, lineHeight: 1.45 }}>
+                        {resource.availableFromDate || "Not set"} to {resource.availableToDate || "Not set"}
                       </div>
                     </div>
                     <div
                       style={{
-                        padding: "12px",
-                        borderRadius: "16px",
-                        background: "rgba(30, 41, 59, 0.62)",
+                        padding: "14px",
+                        borderRadius: "18px",
+                        background: "rgba(30, 41, 59, 0.56)",
+                        border: "1px solid rgba(148, 163, 184, 0.1)",
+                        gridColumn: "1 / -1",
                       }}
                     >
-                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>Availability Time</div>
-                      <div style={{ marginTop: "6px", fontWeight: 700 }}>
-                        {resource.availabilityStart || "--:--"} - {resource.availabilityEnd || "--:--"}
+                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>Availability Window</div>
+                      <div style={{ marginTop: "6px", fontWeight: 700, color: "#f8fafc" }}>
+                        {resource.availabilityStart || "--:--"} to {resource.availabilityEnd || "--:--"}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gap: "10px" }}>
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      borderRadius: "18px",
+                      background: "linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.2) 100%)",
+                      border: "1px solid rgba(148, 163, 184, 0.1)",
+                    }}
+                  >
                     <div>
                       <span style={{ color: "#94a3b8", fontSize: "12px" }}>Location</span>
-                      <div style={{ marginTop: "4px", color: "#e2e8f0" }}>{resource.location}</div>
-                    </div>
-                    <div>
-                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>Description</span>
-                      <div style={{ marginTop: "4px", color: "#cbd5e1", lineHeight: 1.6 }}>
-                        {resource.description || "No description provided."}
-                      </div>
+                      <div style={{ marginTop: "6px", color: "#f8fafc", fontWeight: 600 }}>{resource.location}</div>
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      borderRadius: "18px",
+                      background: "rgba(15, 23, 42, 0.46)",
+                      border: "1px solid rgba(148, 163, 184, 0.1)",
+                    }}
+                  >
+                    <span style={{ color: "#94a3b8", fontSize: "12px" }}>Description</span>
+                    <div style={{ marginTop: "6px", color: "#cbd5e1", lineHeight: 1.7 }}>
+                      {resource.description || "No description provided."}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "auto" }}>
                     <button onClick={() => handleEdit(resource)} style={secondaryButtonStyles}>
                       Edit
                     </button>

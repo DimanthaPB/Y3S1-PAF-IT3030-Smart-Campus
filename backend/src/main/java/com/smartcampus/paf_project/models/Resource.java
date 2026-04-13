@@ -48,9 +48,13 @@ public class Resource {
     @Column(nullable = false)
     private String location;
 
-    @NotNull(message = "Availability date is required")
+    @NotNull(message = "Available from date is required")
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate availabilityDate;
+    private LocalDate availableFromDate;
+
+    @NotNull(message = "Available to date is required")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate availableToDate;
 
     @NotNull(message = "Availability start time is required")
     @JsonFormat(pattern = "HH:mm")
@@ -72,14 +76,16 @@ public class Resource {
     }
 
     public Resource(Long id, String name, ResourceType type, Integer capacity, String location,
-                    LocalDate availabilityDate, LocalTime availabilityStart, LocalTime availabilityEnd,
+                    LocalDate availableFromDate, LocalDate availableToDate,
+                    LocalTime availabilityStart, LocalTime availabilityEnd,
                     ResourceStatus status, String description) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.capacity = capacity;
         this.location = location;
-        this.availabilityDate = availabilityDate;
+        this.availableFromDate = availableFromDate;
+        this.availableToDate = availableToDate;
         this.availabilityStart = availabilityStart;
         this.availabilityEnd = availabilityEnd;
         this.status = status;
@@ -126,12 +132,20 @@ public class Resource {
         this.location = location;
     }
 
-    public LocalDate getAvailabilityDate() {
-        return availabilityDate;
+    public LocalDate getAvailableFromDate() {
+        return availableFromDate;
     }
 
-    public void setAvailabilityDate(LocalDate availabilityDate) {
-        this.availabilityDate = availabilityDate;
+    public void setAvailableFromDate(LocalDate availableFromDate) {
+        this.availableFromDate = availableFromDate;
+    }
+
+    public LocalDate getAvailableToDate() {
+        return availableToDate;
+    }
+
+    public void setAvailableToDate(LocalDate availableToDate) {
+        this.availableToDate = availableToDate;
     }
 
     public LocalTime getAvailabilityStart() {
@@ -179,6 +193,27 @@ public class Resource {
         }
 
         return capacity != null && capacity > 0;
+    }
+
+    @AssertTrue(message = "Available from date must be on or before available to date")
+    @Transient
+    @JsonIgnore
+    public boolean isAvailabilityDateRangeValid() {
+        return availableFromDate == null || availableToDate == null || !availableFromDate.isAfter(availableToDate);
+    }
+
+    @AssertTrue(message = "Available from date cannot be in the past")
+    @Transient
+    @JsonIgnore
+    public boolean isAvailableFromDateNotInPast() {
+        return availableFromDate == null || !availableFromDate.isBefore(LocalDate.now());
+    }
+
+    @AssertTrue(message = "Available to date cannot be in the past")
+    @Transient
+    @JsonIgnore
+    public boolean isAvailableToDateNotInPast() {
+        return availableToDate == null || !availableToDate.isBefore(LocalDate.now());
     }
 
     @AssertTrue(message = "Availability start time must be earlier than availability end time")

@@ -41,7 +41,8 @@ public class ResourceController {
         @RequestParam(required = false) String location,
         @RequestParam(required = false) Resource.ResourceStatus status,
         @RequestParam(required = false) Integer capacity,
-        @RequestParam(required = false) LocalDate availabilityDate,
+        @RequestParam(required = false) LocalDate availableFromDate,
+        @RequestParam(required = false) LocalDate availableToDate,
         @RequestParam(required = false) LocalTime availabilityStart,
         @RequestParam(required = false) LocalTime availabilityEnd) {
 
@@ -73,10 +74,17 @@ public class ResourceController {
                 .toList();
         }
 
-        if (availabilityDate != null) {
+        if (availableFromDate != null) {
         resources = resources.stream()
-                .filter(resource -> resource.getAvailabilityDate() != null &&
-                        resource.getAvailabilityDate().isEqual(availabilityDate))
+                .filter(resource -> resource.getAvailableToDate() != null &&
+                        !resource.getAvailableToDate().isBefore(availableFromDate))
+                .toList();
+        }
+
+        if (availableToDate != null) {
+        resources = resources.stream()
+                .filter(resource -> resource.getAvailableFromDate() != null &&
+                        !resource.getAvailableFromDate().isAfter(availableToDate))
                 .toList();
         }
 
@@ -112,7 +120,8 @@ public class ResourceController {
                     resource.setType(updatedResource.getType());
                     resource.setCapacity(updatedResource.getCapacity());
                     resource.setLocation(updatedResource.getLocation());
-                    resource.setAvailabilityDate(updatedResource.getAvailabilityDate());
+                    resource.setAvailableFromDate(updatedResource.getAvailableFromDate());
+                    resource.setAvailableToDate(updatedResource.getAvailableToDate());
                     resource.setAvailabilityStart(updatedResource.getAvailabilityStart());
                     resource.setAvailabilityEnd(updatedResource.getAvailabilityEnd());
                     resource.setStatus(updatedResource.getStatus());
