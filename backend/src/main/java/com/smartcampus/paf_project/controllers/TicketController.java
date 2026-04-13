@@ -8,6 +8,7 @@ import java.util.List;
 import com.smartcampus.paf_project.models.Ticket;
 import com.smartcampus.paf_project.service.TicketService;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/tickets")
 public class TicketController {

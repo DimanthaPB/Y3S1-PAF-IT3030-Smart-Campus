@@ -9,7 +9,7 @@ import ContactUs from './pages/info/ContactUs';
 import FAQ from './pages/info/FAQ';
 import PrivacyPolicy from './pages/info/PrivacyPolicy';
 import TermsOfService from './pages/info/TermsOfService';
-
+import TicketList from "./components/Ticket/TicketList";
 import './styles/design-system.css';
 
 function App() {
@@ -29,12 +29,16 @@ function App() {
             <Route path="/faq" element={<FAQ />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/tickets" element={<TicketList />} />
           </Routes>
         </main>
         <Footer />
       </div>
     </Router>
   );
+
+  return <TicketList />;
+  
 }
 
 export default App;

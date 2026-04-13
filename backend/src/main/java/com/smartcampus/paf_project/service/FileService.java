@@ -44,7 +44,7 @@ public class FileService {
 
     file.transferTo(new File(filePath));
 
-    return filePath;
+    return "uploads/" + fileName;
 }
 
     

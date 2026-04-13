@@ -1,5 +1,7 @@
 package com.smartcampus.paf_project.controllers;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +12,7 @@ import com.smartcampus.paf_project.repositories.AttachmentRepository;
 import com.smartcampus.paf_project.repositories.TicketRepository;
 import com.smartcampus.paf_project.service.FileService;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/attachments")
 public class AttachmentController {
@@ -38,5 +41,12 @@ public class AttachmentController {
         attachment.setTicket(ticket);
 
         return attachmentRepository.save(attachment);
+
     }
+
+    @GetMapping("/ticket/{ticketId}")
+    public List<Attachment> getAttachmentsByTicket(@PathVariable Long ticketId) {
+        return attachmentRepository.findByTicketId(ticketId);
+    }
+
 }
