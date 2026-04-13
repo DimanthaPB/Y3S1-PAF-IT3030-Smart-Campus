@@ -49,4 +49,11 @@ public class AttachmentController {
         return attachmentRepository.findByTicketId(ticketId);
     }
 
+    @DeleteMapping("/{attachmentId}")
+    public void deleteAttachment(@PathVariable Long attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId).orElseThrow();
+        fileService.deleteFile(attachment.getFilePath());
+        attachmentRepository.delete(attachment);
+    }
+
 }

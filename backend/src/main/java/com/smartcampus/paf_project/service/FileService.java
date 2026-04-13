@@ -47,5 +47,20 @@ public class FileService {
     return "uploads/" + fileName;
 }
 
+    public void deleteFile(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return;
+        }
+
+        File file = new File(relativePath);
+        if (!file.isAbsolute()) {
+            file = new File(uploadDir, relativePath.replace("uploads/", ""));
+        }
+
+        if (file.exists() && !file.delete()) {
+            System.err.println("Failed to delete file: " + file.getAbsolutePath());
+        }
+    }
+    
     
 }

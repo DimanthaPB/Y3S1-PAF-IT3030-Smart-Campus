@@ -1,65 +1,11 @@
-/*import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import axios from "axios";
+import "../../styles/TicketManagement.css";
 
-function AttachmentList({ ticketId }) {
-  const [attachments, setAttachments] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`http://localhost:8080/api/attachments/ticket/${ticketId}`)
-      .then((res) => {
-        setAttachments(res.data || []);
-      })
-      .catch((err) => {
-        console.error("Attachment error:", err);
-      });
-  }, [ticketId]);
-
-  return (
-    <div style={{ marginTop: "10px" }}>
-      <h4>Attachments</h4>
-
-      {attachments.length === 0 ? (
-        <p>No attachments</p>
-      ) : (
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          {attachments.map((att) => (
-            <a
-              key={att.id}
-              href={`http://localhost:8080/${att.filePath}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-  src={`http://localhost:8080/${att.filePath}`}
-  alt={att.fileName}
-  style={{
-    width: "200px",
-    borderRadius: "8px",
-    border: "1px solid #555",
-    cursor: "pointer",
-    transition: "0.3s"
-  }}
-  onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-  onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
-/>
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default AttachmentList;*/
-
-
-import { useEffect, useState } from "react";
-import axios from "axios";
-
-function AttachmentList({ ticketId }) {
+function AttachmentList({ ticketId, refreshKey = 0, canDelete = true }) {
   const [attachments, setAttachments] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     axios
@@ -68,90 +14,74 @@ function AttachmentList({ ticketId }) {
         setAttachments(res.data || []);
       })
       .catch((err) => console.error("Attachment error:", err));
-  }, [ticketId]);
+  }, [ticketId, refreshKey]);
+
+  const handleDelete = (attachmentId, filePath) => {
+    const imageUrl = `http://localhost:8080/${filePath}`;
+    setDeletingId(attachmentId);
+
+    axios
+      .delete(`http://localhost:8080/api/attachments/${attachmentId}`)
+      .then(() => {
+        setAttachments((current) =>
+          current.filter((att) => att.id !== attachmentId)
+        );
+
+        if (selectedImage === imageUrl) {
+          setSelectedImage(null);
+        }
+      })
+      .catch((err) => {
+        console.error("Delete error:", err);
+        alert("Delete failed");
+      })
+      .finally(() => {
+        setDeletingId(null);
+      });
+  };
 
   return (
-    <div style={{ marginTop: "10px" }}>
+    <div className="attachment-section">
       <h4>Attachments</h4>
 
       {attachments.length === 0 ? (
-        <p>No attachments</p>
+        <p className="attachment-empty-text">No attachments</p>
       ) : (
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <div className="attachment-grid">
           {attachments.map((att) => (
-            <img
-              key={att.id}
-              src={`http://localhost:8080/${att.filePath}`}
-              alt={att.fileName}
-              style={{
-                width: "200px",
-                borderRadius: "8px",
-                border: "1px solid #555",
-                cursor: "pointer",
-                transition: "0.3s"
-              }}
-              onClick={() =>
-                setSelectedImage(`http://localhost:8080/${att.filePath}`)
-              }
-              onMouseOver={(e) =>
-                (e.currentTarget.style.transform = "scale(1.05)")
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.transform = "scale(1)")
-              }
-            />
+            <div key={att.id} className="attachment-item">
+              <img
+                src={`http://localhost:8080/${att.filePath}`}
+                alt={att.fileName}
+                className="attachment-image"
+                onClick={() =>
+                  setSelectedImage(`http://localhost:8080/${att.filePath}`)
+                }
+              />
+
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(att.id, att.filePath)}
+                  disabled={deletingId === att.id}
+                  className="btn btn-delete"
+                >
+                  {deletingId === att.id ? "Deleting..." : "Delete"}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
 
-      {/* 🔥 IMAGE MODAL */}
       {selectedImage && (
-        <div
-          onClick={() => setSelectedImage(null)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0,0,0,0.8)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000
-          }}
-        >
-          <div style={{ position: "relative" }}>
-            {/* ❌ CLOSE BUTTON */}
-            <span
-              onClick={() => setSelectedImage(null)}
-              style={{
-                position: "absolute",
-                top: "-10px",
-                right: "-10px",
-                background: "white",
-                color: "black",
-                borderRadius: "50%",
-                width: "25px",
-                height: "25px",
-                textAlign: "center",
-                cursor: "pointer",
-                fontWeight: "bold"
-              }}
-            >
-              ✕
+        <div className="modal-backdrop" onClick={() => setSelectedImage(null)}>
+          <div className="modal-content">
+            <span className="modal-close" onClick={() => setSelectedImage(null)}>
+              X
             </span>
 
-            {/* IMAGE */}
-            <img
-              src={selectedImage}
-              alt="Preview"
-              style={{
-                maxWidth: "80vw",
-                maxHeight: "80vh",
-                borderRadius: "10px"
-              }}
-            />
+            <img src={selectedImage} alt="Preview" className="modal-image" />
           </div>
         </div>
       )}

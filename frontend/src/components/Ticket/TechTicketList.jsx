@@ -1,7 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import axios from "axios";
 import TicketCard from "./TicketCard";
-import TicketForm from "./TicketForm";
 import "../../styles/TicketManagement.css";
 
 const sortTickets = (ticketList = []) =>
@@ -16,7 +15,7 @@ const sortTickets = (ticketList = []) =>
     return (b?.id || 0) - (a?.id || 0);
   });
 
-function TicketList({ refreshKey = 0 }) {
+function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
   const [tickets, setTickets] = useState([]);
 
   const fetchTickets = () => {
@@ -34,23 +33,38 @@ function TicketList({ refreshKey = 0 }) {
     fetchTickets();
   }, [refreshKey]);
 
-  const handleTicketCreated = (newTicket) => {
-    setTickets((current) => sortTickets([newTicket, ...current]));
+  const handleTicketUpdated = (updatedTicket) => {
+    setTickets((current) =>
+      current.map((ticket) =>
+        ticket.id === updatedTicket.id ? updatedTicket : ticket
+      )
+    );
+  };
+
+  const handleStatusUpdated = () => {
+    if (onTicketRefresh) {
+      onTicketRefresh();
+    }
   };
 
   return (
     <div className="ticket-page">
-      <h1 className="ticket-page-title">Support Desk</h1>
-      <TicketForm onTicketCreated={handleTicketCreated} />
-
       <section className="ticket-section">
-        <h2 className="ticket-section-title">Submitted Tickets</h2>
+        <h2 className="ticket-section-title">Ticket Management</h2>
         {tickets.length === 0 ? (
           <p className="ticket-empty-state">No tickets found</p>
         ) : (
           <div className="ticket-list-stack">
             {tickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                canUploadAttachments={false}
+                canDeleteAttachments={false}
+                canEditStatus
+                onTicketUpdated={handleTicketUpdated}
+                onStatusChanged={handleStatusUpdated}
+              />
             ))}
           </div>
         )}
@@ -59,4 +73,4 @@ function TicketList({ refreshKey = 0 }) {
   );
 }
 
-export default TicketList;
+export default TechTicketList;

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 import com.smartcampus.paf_project.models.Ticket;
 import com.smartcampus.paf_project.service.TicketService;
@@ -37,6 +38,13 @@ public class TicketController {
     @GetMapping("/{id}")
     public Ticket getTicketById(@PathVariable Long id) {
         return ticketService.getTicketById(id);
+    }
+
+    @PutMapping("/{id}/status")
+    public Ticket updateTicketStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        return ticketService.updateTicketStatus(id, payload.get("status"));
     }
 
 }

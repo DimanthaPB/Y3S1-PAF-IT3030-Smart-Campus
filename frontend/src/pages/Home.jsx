@@ -1,7 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Home.css';
 
 const Home = () => {
+  const navigate = useNavigate();
+
+  const handleIncidentCardClick = () => {
+    navigate('/tickets');
+  };
+
   return (
     <div className="home-container">
       <div className="hero-section animate-fade-in">
@@ -19,7 +26,20 @@ const Home = () => {
             <p>Seamlessly reserve rooms, labs, and equipment with instant approval flows.</p>
           </div>
           
-          <div className="glass-panel feature-card">
+          <div
+            className="glass-panel feature-card"
+            role="button"
+            tabIndex={0}
+            onClick={handleIncidentCardClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleIncidentCardClick();
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+            aria-label="Go to Incident Management tickets"
+          >
             <div className="feature-icon icon-green"></div>
             <h3>Incident Management</h3>
             <p>Report and track maintenance issues with real-time updates and notifications.</p>
