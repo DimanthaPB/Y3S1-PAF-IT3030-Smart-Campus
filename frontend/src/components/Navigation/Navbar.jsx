@@ -40,6 +40,10 @@ const Navbar = () => {
 
       <div className="navbar-links">
         <Link to="/">Home</Link>
+
+          {/* ✅ ADD THIS */}
+        <Link to="/resources">Resources</Link>
+
         {isAuthenticated && <Link to="/preferences">Preferences</Link>}
       </div>
 
