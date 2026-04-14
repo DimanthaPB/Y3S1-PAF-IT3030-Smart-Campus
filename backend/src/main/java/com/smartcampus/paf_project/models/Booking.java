@@ -14,6 +14,10 @@ public class Booking {
 
     private String facilityName;
 
+    @ManyToOne
+    @JoinColumn(name = "resource_id")
+    private Resource resource;
+
     private String bookedBy;
 
     private LocalDate bookingDate;
@@ -67,6 +71,14 @@ public class Booking {
 
     public void setFacilityName(String facilityName) {
         this.facilityName = facilityName;
+    }
+
+    public Resource getResource() {
+        return resource;
+    }
+
+    public void setResource(Resource resource) {
+        this.resource = resource;
     }
 
     public String getBookedBy() {
