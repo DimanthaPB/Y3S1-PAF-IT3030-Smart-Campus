@@ -1,6 +1,7 @@
 package com.smartcampus.paf_project.repositories;
 
 import com.smartcampus.paf_project.models.Booking;
+import com.smartcampus.paf_project.models.BookingStatus;
 import com.smartcampus.paf_project.models.Resource;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -35,4 +36,18 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             LocalTime endTime,
             LocalTime startTime
     );
+
+    List<Booking> findByBookedByIgnoreCase(String bookedBy);
+
+    List<Booking> findByStatus(BookingStatus status);
+
+    List<Booking> findByFacilityNameIgnoreCase(String facilityName);
+
+    List<Booking> findByBookingDate(LocalDate bookingDate);
+
+    List<Booking> findByStatusAndBookedByIgnoreCase(BookingStatus status, String bookedBy);
+
+    List<Booking> findByStatusAndFacilityNameIgnoreCase(BookingStatus status, String facilityName);
+
+    List<Booking> findByStatusAndBookingDate(BookingStatus status, LocalDate bookingDate);
 }

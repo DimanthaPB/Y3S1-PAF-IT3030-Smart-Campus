@@ -3,8 +3,10 @@ package com.smartcampus.paf_project.controllers;
 import com.smartcampus.paf_project.models.Booking;
 import com.smartcampus.paf_project.services.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -21,8 +23,13 @@ public class BookingController {
     }
 
     @GetMapping
-    public List<Booking> getAllBookings() {
-        return bookingService.getAllBookings();
+    public List<Booking> getAllBookings(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String bookedBy,
+            @RequestParam(required = false) String facilityName,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate bookingDate
+    ) {
+        return bookingService.getFilteredBookings(status, bookedBy, facilityName, bookingDate);
     }
 
     @GetMapping("/{id}")

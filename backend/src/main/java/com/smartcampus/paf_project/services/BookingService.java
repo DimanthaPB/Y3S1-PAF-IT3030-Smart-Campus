@@ -21,77 +21,110 @@ public class BookingService {
     @Autowired
     private ResourceRepository resourceRepository;
 
-public Booking createBooking(Booking booking) {
+    public Booking createBooking(Booking booking) {
 
-    List<Booking> conflictingBookings;
+        List<Booking> conflictingBookings;
 
-    if (booking.getResource() != null && booking.getResource().getId() != null) {
-        Resource resource = resourceRepository.findById(booking.getResource().getId())
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+        if (booking.getResource() != null && booking.getResource().getId() != null) {
+            Resource resource = resourceRepository.findById(booking.getResource().getId())
+                    .orElseThrow(() -> new RuntimeException("Resource not found"));
 
-        if (resource.getStatus() != Resource.ResourceStatus.ACTIVE) {
-            throw new RuntimeException("Selected resource is not active.");
+            if (resource.getStatus() != Resource.ResourceStatus.ACTIVE) {
+                throw new RuntimeException("Selected resource is not active.");
+            }
+
+            if (resource.getCapacity() != null
+                    && booking.getExpectedAttendees() != null
+                    && booking.getExpectedAttendees() > resource.getCapacity()) {
+                throw new RuntimeException("Expected attendees exceed resource capacity.");
+            }
+
+            if (resource.getAvailableFromDate() != null && booking.getBookingDate().isBefore(resource.getAvailableFromDate())) {
+                throw new RuntimeException("Booking date is before the resource available from date.");
+            }
+
+            if (resource.getAvailableToDate() != null && booking.getBookingDate().isAfter(resource.getAvailableToDate())) {
+                throw new RuntimeException("Booking date is after the resource available to date.");
+            }
+
+            if (resource.getAvailabilityStart() != null && booking.getStartTime().isBefore(resource.getAvailabilityStart())) {
+                throw new RuntimeException("Booking start time is before the resource availability start time.");
+            }
+
+            if (resource.getAvailabilityEnd() != null && booking.getEndTime().isAfter(resource.getAvailabilityEnd())) {
+                throw new RuntimeException("Booking end time is after the resource availability end time.");
+            }
+
+            booking.setResource(resource);
+
+            if (booking.getFacilityName() == null || booking.getFacilityName().isBlank()) {
+                booking.setFacilityName(resource.getName());
+            }
+
+            conflictingBookings =
+                    bookingRepository.findByResourceAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
+                            resource,
+                            booking.getBookingDate(),
+                            booking.getEndTime(),
+                            booking.getStartTime()
+                    );
+        } else {
+            conflictingBookings =
+                    bookingRepository.findByFacilityNameAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
+                            booking.getFacilityName(),
+                            booking.getBookingDate(),
+                            booking.getEndTime(),
+                            booking.getStartTime()
+                    );
         }
 
-        if (resource.getCapacity() != null
-                && booking.getExpectedAttendees() != null
-                && booking.getExpectedAttendees() > resource.getCapacity()) {
-            throw new RuntimeException("Expected attendees exceed resource capacity.");
+        boolean hasConflict = conflictingBookings.stream().anyMatch(existingBooking ->
+                existingBooking.getStatus() == BookingStatus.PENDING ||
+                existingBooking.getStatus() == BookingStatus.APPROVED
+        );
+
+        if (hasConflict) {
+            throw new BookingConflictException("Booking conflict detected for this facility and time range.");
         }
 
-        if (resource.getAvailableFromDate() != null && booking.getBookingDate().isBefore(resource.getAvailableFromDate())) {
-            throw new RuntimeException("Booking date is before the resource available from date.");
-        }
+        booking.setStatus(BookingStatus.PENDING);
 
-        if (resource.getAvailableToDate() != null && booking.getBookingDate().isAfter(resource.getAvailableToDate())) {
-            throw new RuntimeException("Booking date is after the resource available to date.");
-        }
-
-        if (resource.getAvailabilityStart() != null && booking.getStartTime().isBefore(resource.getAvailabilityStart())) {
-            throw new RuntimeException("Booking start time is before the resource availability start time.");
-        }
-
-        if (resource.getAvailabilityEnd() != null && booking.getEndTime().isAfter(resource.getAvailabilityEnd())) {
-            throw new RuntimeException("Booking end time is after the resource availability end time.");
-        }
-
-        booking.setResource(resource);
-
-        if (booking.getFacilityName() == null || booking.getFacilityName().isBlank()) {
-            booking.setFacilityName(resource.getName());
-        }
-
-        conflictingBookings =
-                bookingRepository.findByResourceAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
-                        resource,
-                        booking.getBookingDate(),
-                        booking.getEndTime(),
-                        booking.getStartTime()
-                );
-    } else {
-        conflictingBookings =
-                bookingRepository.findByFacilityNameAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
-                        booking.getFacilityName(),
-                        booking.getBookingDate(),
-                        booking.getEndTime(),
-                        booking.getStartTime()
-                );
+        return bookingRepository.save(booking);
     }
 
-    boolean hasConflict = conflictingBookings.stream().anyMatch(existingBooking ->
-            existingBooking.getStatus() == BookingStatus.PENDING ||
-            existingBooking.getStatus() == BookingStatus.APPROVED
-    );
-
-    if (hasConflict) {
-        throw new BookingConflictException("Booking conflict detected for this facility and time range.");
-    }
-
-    booking.setStatus(BookingStatus.PENDING);
-
-    return bookingRepository.save(booking);
-}
     public List<Booking> getAllBookings() {
+        return bookingRepository.findAll();
+    }
+
+    public List<Booking> getFilteredBookings(String status, String bookedBy, String facilityName, LocalDate bookingDate) {
+        if (status != null && bookedBy != null) {
+            return bookingRepository.findByStatusAndBookedByIgnoreCase(BookingStatus.valueOf(status.toUpperCase()), bookedBy);
+        }
+
+        if (status != null && facilityName != null) {
+            return bookingRepository.findByStatusAndFacilityNameIgnoreCase(BookingStatus.valueOf(status.toUpperCase()), facilityName);
+        }
+
+        if (status != null && bookingDate != null) {
+            return bookingRepository.findByStatusAndBookingDate(BookingStatus.valueOf(status.toUpperCase()), bookingDate);
+        }
+
+        if (status != null) {
+            return bookingRepository.findByStatus(BookingStatus.valueOf(status.toUpperCase()));
+        }
+
+        if (bookedBy != null) {
+            return bookingRepository.findByBookedByIgnoreCase(bookedBy);
+        }
+
+        if (facilityName != null) {
+            return bookingRepository.findByFacilityNameIgnoreCase(facilityName);
+        }
+
+        if (bookingDate != null) {
+            return bookingRepository.findByBookingDate(bookingDate);
+        }
+
         return bookingRepository.findAll();
     }
 
