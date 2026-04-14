@@ -17,6 +17,8 @@ const sortTickets = (ticketList = []) =>
 
 function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
   const [tickets, setTickets] = useState([]);
+  const [resourcesById, setResourcesById] = useState({});
+  const currentUser = "Admin";
 
   const fetchTickets = () => {
     axios
@@ -32,6 +34,21 @@ function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
   useEffect(() => {
     fetchTickets();
   }, [refreshKey]);
+
+  useEffect(() => {
+    axios
+      .get("http://localhost:8080/api/resources")
+      .then((res) => {
+        const resourceMap = (res.data || []).reduce((acc, resource) => {
+          acc[String(resource.id)] = resource.name;
+          return acc;
+        }, {});
+        setResourcesById(resourceMap);
+      })
+      .catch((err) => {
+        console.error("Resource fetch error:", err);
+      });
+  }, []);
 
   const handleTicketUpdated = (updatedTicket) => {
     setTickets((current) =>
@@ -62,8 +79,12 @@ function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
                 canUploadAttachments={false}
                 canDeleteAttachments={false}
                 canEditStatus
+                canAssignTechnician
+                canSetRejected
                 onTicketUpdated={handleTicketUpdated}
                 onStatusChanged={handleStatusUpdated}
+                currentUser={currentUser}
+                resourcesById={resourcesById}
               />
             ))}
           </div>

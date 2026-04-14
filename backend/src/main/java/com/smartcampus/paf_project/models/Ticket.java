@@ -18,12 +18,13 @@ public class Ticket {
     private String title;
     private String description;
     private String category;
+    private Long resourceId;
 
     private String priority; // LOW, MEDIUM, HIGH
     private String status;   // OPEN, IN_PROGRESS, etc.
 
     private Long createdBy;
-    private Long assignedTo;
+    private String assignedTo;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -50,6 +51,9 @@ public class Ticket {
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
 
+    public Long getResourceId() { return resourceId; }
+    public void setResourceId(Long resourceId) { this.resourceId = resourceId; }
+
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
 
@@ -59,8 +63,8 @@ public class Ticket {
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
 
-    public Long getAssignedTo() { return assignedTo; }
-    public void setAssignedTo(Long assignedTo) { this.assignedTo = assignedTo; }
+    public String getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

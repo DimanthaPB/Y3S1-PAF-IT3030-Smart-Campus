@@ -18,6 +18,7 @@ const sortTickets = (ticketList = []) =>
 
 function TicketList({ refreshKey = 0 }) {
   const [tickets, setTickets] = useState([]);
+  const [resourcesById, setResourcesById] = useState({});
 
   const fetchTickets = () => {
     axios
@@ -33,6 +34,21 @@ function TicketList({ refreshKey = 0 }) {
   useEffect(() => {
     fetchTickets();
   }, [refreshKey]);
+
+  useEffect(() => {
+    axios
+      .get("http://localhost:8080/api/resources")
+      .then((res) => {
+        const resourceMap = (res.data || []).reduce((acc, resource) => {
+          acc[String(resource.id)] = resource.name;
+          return acc;
+        }, {});
+        setResourcesById(resourceMap);
+      })
+      .catch((err) => {
+        console.error("Resource fetch error:", err);
+      });
+  }, []);
 
   const handleTicketCreated = (newTicket) => {
     setTickets((current) => sortTickets([newTicket, ...current]));
@@ -50,7 +66,12 @@ function TicketList({ refreshKey = 0 }) {
         ) : (
           <div className="ticket-list-stack">
             {tickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                currentUser="User1"
+                resourcesById={resourcesById}
+              />
             ))}
           </div>
         )}

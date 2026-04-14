@@ -47,4 +47,11 @@ public class TicketController {
         return ticketService.updateTicketStatus(id, payload.get("status"));
     }
 
+    @PutMapping("/{id}/assignment")
+    public Ticket updateTicketAssignment(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        return ticketService.updateTicketAssignment(id, payload.get("assignedTo"));
+    }
+
 }

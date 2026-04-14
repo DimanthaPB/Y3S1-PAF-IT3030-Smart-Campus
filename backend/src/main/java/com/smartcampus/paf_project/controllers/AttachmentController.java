@@ -3,8 +3,10 @@ package com.smartcampus.paf_project.controllers;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.smartcampus.paf_project.models.Attachment;
 import com.smartcampus.paf_project.models.Ticket;
@@ -16,6 +18,7 @@ import com.smartcampus.paf_project.service.FileService;
 @RestController
 @RequestMapping("/api/attachments")
 public class AttachmentController {
+    private static final int MAX_ATTACHMENTS_PER_TICKET = 3;
 
     @Autowired
     private FileService fileService;
@@ -30,6 +33,26 @@ public class AttachmentController {
     public Attachment uploadFile(
             @PathVariable Long ticketId,
             @RequestParam("file") MultipartFile file) throws Exception {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null ||
+                !(contentType.equalsIgnoreCase("image/jpeg") ||
+                  contentType.equalsIgnoreCase("image/jpg") ||
+                  contentType.equalsIgnoreCase("image/png"))) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only JPG and PNG images are allowed");
+        }
+
+        long currentCount = attachmentRepository.countByTicketId(ticketId);
+        if (currentCount >= MAX_ATTACHMENTS_PER_TICKET) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Maximum 3 attachments allowed per ticket");
+        }
 
         String filePath = fileService.saveFile(file);
 

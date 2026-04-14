@@ -12,7 +12,7 @@ import com.smartcampus.paf_project.repositories.TicketRepository;
 @Service
 public class TicketService {
     private static final Set<String> ALLOWED_STATUSES =
-            Set.of("OPEN", "IN_PROGRESS", "CLOSED");
+            Set.of("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED");
 
     @Autowired
     private TicketRepository ticketRepository;
@@ -38,6 +38,13 @@ public class TicketService {
 
         Ticket ticket = ticketRepository.findById(id).orElseThrow();
         ticket.setStatus(status);
+        ticket.setUpdatedAt(LocalDateTime.now());
+        return ticketRepository.save(ticket);
+    }
+
+    public Ticket updateTicketAssignment(Long id, String assignedTo) {
+        Ticket ticket = ticketRepository.findById(id).orElseThrow();
+        ticket.setAssignedTo(assignedTo == null ? null : assignedTo.trim());
         ticket.setUpdatedAt(LocalDateTime.now());
         return ticketRepository.save(ticket);
     }

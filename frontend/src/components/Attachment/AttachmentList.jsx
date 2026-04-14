@@ -2,7 +2,12 @@
 import axios from "axios";
 import "../../styles/TicketManagement.css";
 
-function AttachmentList({ ticketId, refreshKey = 0, canDelete = true }) {
+function AttachmentList({
+  ticketId,
+  refreshKey = 0,
+  canDelete = true,
+  onCountChange
+}) {
   const [attachments, setAttachments] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -15,6 +20,12 @@ function AttachmentList({ ticketId, refreshKey = 0, canDelete = true }) {
       })
       .catch((err) => console.error("Attachment error:", err));
   }, [ticketId, refreshKey]);
+
+  useEffect(() => {
+    if (onCountChange) {
+      onCountChange(attachments.length);
+    }
+  }, [attachments.length, onCountChange]);
 
   const handleDelete = (attachmentId, filePath) => {
     const imageUrl = `http://localhost:8080/${filePath}`;
