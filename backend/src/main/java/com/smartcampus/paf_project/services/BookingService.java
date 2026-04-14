@@ -55,12 +55,22 @@ public class BookingService {
 
     public Booking approveBooking(Long id) {
         Booking booking = getBookingById(id);
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new RuntimeException("Only PENDING bookings can be approved.");
+        }
+
         booking.setStatus(BookingStatus.APPROVED);
         return bookingRepository.save(booking);
     }
 
     public Booking rejectBooking(Long id, String rejectionReason) {
         Booking booking = getBookingById(id);
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new RuntimeException("Only PENDING bookings can be rejected.");
+        }
+
         booking.setStatus(BookingStatus.REJECTED);
         booking.setRejectionReason(rejectionReason);
         return bookingRepository.save(booking);
@@ -68,6 +78,11 @@ public class BookingService {
 
     public Booking cancelBooking(Long id, String cancelReason) {
         Booking booking = getBookingById(id);
+
+        if (booking.getStatus() != BookingStatus.APPROVED) {
+            throw new RuntimeException("Only APPROVED bookings can be cancelled.");
+        }
+
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelReason(cancelReason);
         return bookingRepository.save(booking);
