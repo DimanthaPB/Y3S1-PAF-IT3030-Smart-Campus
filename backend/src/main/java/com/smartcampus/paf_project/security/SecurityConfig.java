@@ -21,7 +21,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final HttpCookieOAuth2AuthorizationRequestRepository httpCookieOAuth2AuthorizationRequestRepository;
 
-    public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler, 
+    public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
                           JwtAuthenticationFilter jwtAuthenticationFilter,
                           HttpCookieOAuth2AuthorizationRequestRepository httpCookieOAuth2AuthorizationRequestRepository) {
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
@@ -31,9 +31,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository) throws Exception {
-        org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver resolver = 
+        org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver resolver =
                 new org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, "/oauth2/authorization");
-        
+
         resolver.setAuthorizationRequestCustomizer(customizer -> {
             customizer.additionalParameters(params -> params.put("prompt", "select_account"));
         });
@@ -43,13 +43,15 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/bookings/**", "/error").permitAll()
-            .anyRequest().authenticated()
+                .requestMatchers("/", "/login", "/oauth2/**", "/error").permitAll()
+                .requestMatchers("/api/resources/**").permitAll()
+                .requestMatchers("/api/bookings/**").permitAll()
+                .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(auth -> auth
-                        .authorizationRequestRepository(httpCookieOAuth2AuthorizationRequestRepository)
-                        .authorizationRequestResolver(resolver)
+                    .authorizationRequestRepository(httpCookieOAuth2AuthorizationRequestRepository)
+                    .authorizationRequestResolver(resolver)
                 )
                 .successHandler(oAuth2LoginSuccessHandler)
             )
@@ -61,7 +63,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // React dev server
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type"));
         configuration.setAllowCredentials(true);
