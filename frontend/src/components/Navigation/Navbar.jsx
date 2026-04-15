@@ -43,7 +43,8 @@ const Navbar = () => {
 
           {/* ✅ ADD THIS */}
         <Link to="/resources">Resources</Link>
-
+        {isAuthenticated && <Link to="/bookings">My Bookings</Link>}
+        {isAuthenticated && <Link to="/admin/bookings">Admin Bookings</Link>}
         {isAuthenticated && <Link to="/preferences">Preferences</Link>}
       </div>
 

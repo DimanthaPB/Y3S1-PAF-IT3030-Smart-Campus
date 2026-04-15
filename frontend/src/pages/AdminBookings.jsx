@@ -99,11 +99,18 @@ function AdminBookings() {
             <p><strong>Start Time:</strong> {booking.startTime}</p>
             <p><strong>End Time:</strong> {booking.endTime}</p>
 
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+          {booking.status === 'PENDING' && (
+            <>
               <button onClick={() => handleApprove(booking.id)}>Approve</button>
               <button onClick={() => handleReject(booking.id)}>Reject</button>
-              <button onClick={() => handleCancel(booking.id)}>Cancel</button>
-            </div>
+            </>
+          )}
+
+          {booking.status === 'APPROVED' && (
+            <button onClick={() => handleCancel(booking.id)}>Cancel</button>
+          )}
+        </div>
           </div>
         ))
       )}
