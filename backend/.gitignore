@@ -43,3 +43,5 @@ Thumbs.db
 
 .env
 env.properties
+
+node_modules/

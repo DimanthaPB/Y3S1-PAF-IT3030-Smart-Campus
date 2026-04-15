@@ -84,13 +84,17 @@ public class BookingService {
         );
 
         if (hasConflict) {
-            throw new BookingConflictException("Booking conflict detected for this facility and time range.");
+        throw new BookingConflictException("Booking conflict detected for this facility and time range.");
+       }
+
+        if (booking.getBookedBy() == null || booking.getBookedBy().isBlank()) {
+            booking.setBookedBy("student1@sliit.lk");
         }
 
         booking.setStatus(BookingStatus.PENDING);
 
         return bookingRepository.save(booking);
-    }
+        }
 
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();

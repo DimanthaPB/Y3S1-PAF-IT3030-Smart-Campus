@@ -10,6 +10,8 @@ import ContactUs from './pages/info/ContactUs';
 import FAQ from './pages/info/FAQ';
 import PrivacyPolicy from './pages/info/PrivacyPolicy';
 import TermsOfService from './pages/info/TermsOfService';
+import Bookings from './pages/Bookings';
+import AdminBookings from './pages/AdminBookings';
 
 import './styles/design-system.css';
 
@@ -24,7 +26,8 @@ function App() {
             <Route path="/resources" element={<Resources />} />
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-            
+            <Route path="/bookings" element={<Bookings />} />
+            <Route path="/admin/bookings" element={<AdminBookings />} />
             {/* Informational Pages */}
             <Route path="/about" element={<AboutUs />} />
             <Route path="/contact" element={<ContactUs />} />
