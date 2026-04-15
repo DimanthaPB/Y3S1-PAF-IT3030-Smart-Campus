@@ -109,6 +109,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
   const [resourcesLoading, setResourcesLoading] = useState(true);
   const [attendeeError, setAttendeeError] = useState('');
   const [bookingConflictWarning, setBookingConflictWarning] = useState('');
+  const [timeRangeError, setTimeRangeError] = useState('');
   const [formData, setFormData] = useState({
     resourceType: '',
     resourceId: '',
@@ -138,6 +139,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
       name === 'endTime'
     ) {
       setBookingConflictWarning('');
+      setTimeRangeError('');
     }
 
     setFormData((prev) => ({
@@ -183,6 +185,12 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
       resource?.status === 'ACTIVE' &&
       (!formData.resourceType || resource?.type === formData.resourceType)
   );
+  const isSubmitDisabled =
+    resourcesLoading ||
+    !currentUserEmail ||
+    Boolean(attendeeError) ||
+    Boolean(bookingConflictWarning) ||
+    Boolean(timeRangeError);
 
   useEffect(() => {
     const attendeeCount = Number(formData.expectedAttendees);
@@ -201,6 +209,20 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
 
     setAttendeeError('');
   }, [formData.expectedAttendees, selectedResourceCapacity]);
+
+  useEffect(() => {
+    if (!formData.startTime || !formData.endTime) {
+      setTimeRangeError('');
+      return;
+    }
+
+    if (formData.startTime >= formData.endTime) {
+      setTimeRangeError('End time must be later than start time.');
+      return;
+    }
+
+    setTimeRangeError('');
+  }, [formData.endTime, formData.startTime]);
 
   useEffect(() => {
     const checkBookingConflict = async () => {
@@ -292,6 +314,11 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
 
     if (bookingConflictWarning) {
       alert(bookingConflictWarning);
+      return;
+    }
+
+    if (timeRangeError) {
+      alert(timeRangeError);
       return;
     }
 
@@ -503,6 +530,18 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
               max={availabilityEnd || undefined}
               style={formStyles.input}
             />
+            {timeRangeError ? (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  color: '#fca5a5',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.5',
+                }}
+              >
+                {timeRangeError}
+              </div>
+            ) : null}
           </div>
 
           <div style={formStyles.fieldWrap}>
@@ -573,12 +612,35 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
 
         <button
           type="submit"
-          style={formStyles.submitButton}
+          disabled={isSubmitDisabled}
           onMouseEnter={(e) => {
-            e.target.style.background = 'rgba(16, 185, 129, 0.30)';
+            if (!e.target.disabled) {
+              e.target.style.background = 'rgba(16, 185, 129, 0.30)';
+            }
           }}
           onMouseLeave={(e) => {
-            e.target.style.background = 'rgba(16, 185, 129, 0.20)';
+            e.target.style.background = e.target.disabled
+              ? 'rgba(16, 185, 129, 0.10)'
+              : 'rgba(16, 185, 129, 0.20)';
+          }}
+          onFocus={(e) => {
+            e.target.style.background = e.target.disabled
+              ? 'rgba(16, 185, 129, 0.10)'
+              : 'rgba(16, 185, 129, 0.20)';
+          }}
+          onBlur={(e) => {
+            e.target.style.background = e.target.disabled
+              ? 'rgba(16, 185, 129, 0.10)'
+              : 'rgba(16, 185, 129, 0.20)';
+          }}
+          aria-disabled={isSubmitDisabled}
+          style={{
+            ...formStyles.submitButton,
+            background: isSubmitDisabled
+              ? 'rgba(16, 185, 129, 0.10)'
+              : formStyles.submitButton.background,
+            cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+            opacity: isSubmitDisabled ? 0.65 : 1,
           }}
         >
           Create Booking

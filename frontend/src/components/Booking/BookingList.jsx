@@ -87,7 +87,30 @@ function BookingList({ filters, refreshKey, currentUserEmail }) {
 
   return (
     <div>
-      <h2>Booking List</h2>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <div
+          style={{
+            fontSize: '0.9rem',
+            fontWeight: '700',
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            color: '#7dd3fc',
+            marginBottom: '0.8rem',
+          }}
+        >
+          Results
+        </div>
+        <h2
+          style={{
+            fontSize: '2rem',
+            fontWeight: '800',
+            color: '#ffffff',
+            margin: 0,
+          }}
+        >
+          Booking List
+        </h2>
+      </div>
 
       {filteredBookings.length === 0 ? (
         <div

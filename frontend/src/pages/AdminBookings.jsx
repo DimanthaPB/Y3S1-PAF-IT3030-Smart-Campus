@@ -226,17 +226,29 @@ function AdminBookings() {
   };
 
   if (loading) {
-    return <p style={{ padding: '2rem' }}>Loading admin bookings...</p>;
+    return (
+      <div style={pageStyles.wrapper}>
+        <div
+          style={{
+            border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: '28px',
+            padding: '2rem',
+            background: 'rgba(255,255,255,0.04)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            textAlign: 'center',
+            color: '#cbd5e1',
+            fontSize: '1.05rem',
+          }}
+        >
+          Loading admin bookings...
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div
-      style={{
-        padding: '2rem',
-        maxWidth: '1200px',
-        margin: '0 auto',
-      }}
-    >
+    <div style={pageStyles.wrapper}>
 <div
   style={{
     display: 'grid',
@@ -267,7 +279,7 @@ function AdminBookings() {
   <div
     style={{
       background: 'rgba(16, 185, 129, 0.08)',
-      border: '1px solid rgba(95, 126, 115, 0.25)',
+      border: '1px solid rgba(16, 185, 129, 0.25)',
       borderRadius: '24px',
       padding: '1.5rem',
     }}
@@ -464,17 +476,35 @@ function AdminBookings() {
       </div>
 
       {filteredBookings.length === 0 ? (
-        <p
+        <div
           style={{
-            padding: '1rem',
-            borderRadius: '12px',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#cbd5e1',
+            border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: '28px',
+            padding: '2rem',
+            background: 'rgba(255,255,255,0.04)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            textAlign: 'center',
           }}
         >
-          No bookings match the selected filters.
-        </p>
+          <div
+            style={{
+              fontSize: '1.1rem',
+              color: '#cbd5e1',
+              marginBottom: '0.75rem',
+            }}
+          >
+            No bookings found
+          </div>
+          <div
+            style={{
+              color: '#94a3b8',
+              lineHeight: '1.7',
+            }}
+          >
+            Try changing the filters to see more bookings in the admin queue.
+          </div>
+        </div>
       ) : (
         filteredBookings.map((booking) => (
           <div
@@ -571,11 +601,13 @@ function AdminBookings() {
               </p>
 
               <p style={bookingInfoCardStyles}>
-                <strong>Start Time:</strong> {booking.startTime}
+                <strong>Start Time:</strong>{' '}
+                {booking.startTime || 'Not Available'}
               </p>
 
               <p style={bookingInfoCardStyles}>
-                <strong>End Time:</strong> {booking.endTime}
+                <strong>End Time:</strong>{' '}
+                {booking.endTime || 'Not Available'}
               </p>
 
               <p style={bookingInfoCardStyles}>
@@ -596,6 +628,42 @@ function AdminBookings() {
                 {booking.purpose || 'Not Available'}
               </p>
             </div>
+
+            {(booking.status === 'REJECTED' && booking.rejectionReason) ||
+            (booking.status === 'CANCELLED' && booking.cancelReason) ? (
+              <div
+                style={{
+                  background:
+                    booking.status === 'REJECTED'
+                      ? 'rgba(239, 68, 68, 0.08)'
+                      : 'rgba(107, 114, 128, 0.12)',
+                  borderRadius: '20px',
+                  padding: '1rem',
+                  border:
+                    booking.status === 'REJECTED'
+                      ? '1px solid rgba(239, 68, 68, 0.18)'
+                      : '1px solid rgba(156, 163, 175, 0.18)',
+                  marginTop: '1rem',
+                }}
+              >
+                <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
+                  {booking.status === 'REJECTED'
+                    ? 'Rejection Reason'
+                    : 'Cancellation Reason'}
+                </div>
+                <div
+                  style={{
+                    color: '#ffffff',
+                    fontWeight: '600',
+                    lineHeight: '1.7',
+                  }}
+                >
+                  {booking.status === 'REJECTED'
+                    ? booking.rejectionReason
+                    : booking.cancelReason}
+                </div>
+              </div>
+            ) : null}
 
             <div
               style={{

@@ -180,6 +180,36 @@ function BookingCard({ booking, onBookingUpdated }) {
         </div>
       </div>
 
+      {(booking.status === 'REJECTED' && booking.rejectionReason) ||
+      (booking.status === 'CANCELLED' && booking.cancelReason) ? (
+        <div
+          style={{
+            background:
+              booking.status === 'REJECTED'
+                ? 'rgba(239, 68, 68, 0.08)'
+                : 'rgba(107, 114, 128, 0.12)',
+            borderRadius: '20px',
+            padding: '1rem',
+            border:
+              booking.status === 'REJECTED'
+                ? '1px solid rgba(239, 68, 68, 0.18)'
+                : '1px solid rgba(156, 163, 175, 0.18)',
+            marginBottom: '1.25rem',
+          }}
+        >
+          <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
+            {booking.status === 'REJECTED'
+              ? 'Admin Rejection Reason'
+              : 'Cancellation Reason'}
+          </div>
+          <div style={{ color: '#ffffff', fontWeight: '600', lineHeight: '1.7' }}>
+            {booking.status === 'REJECTED'
+              ? booking.rejectionReason
+              : booking.cancelReason}
+          </div>
+        </div>
+      ) : null}
+
       {booking.status === 'APPROVED' && (
         <button
           onClick={() => handleCancel(booking.id)}
