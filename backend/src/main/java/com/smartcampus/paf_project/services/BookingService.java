@@ -1,15 +1,20 @@
 package com.smartcampus.paf_project.services;
 
+import com.smartcampus.paf_project.dto.BookingResponse;
 import com.smartcampus.paf_project.exceptions.BookingConflictException;
 import com.smartcampus.paf_project.models.Booking;
 import com.smartcampus.paf_project.models.BookingStatus;
 import com.smartcampus.paf_project.models.Resource;
 import com.smartcampus.paf_project.repositories.BookingRepository;
 import com.smartcampus.paf_project.repositories.ResourceRepository;
+import com.smartcampus.paf_project.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -21,7 +26,29 @@ public class BookingService {
     @Autowired
     private ResourceRepository resourceRepository;
 
-    public Booking createBooking(Booking booking) {
+    @Autowired
+    private UserRepository userRepository;
+
+    public Booking createBooking(Booking booking, String currentUserEmail) {
+        if (currentUserEmail == null || currentUserEmail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You must be logged in to create a booking.");
+        }
+
+        if (booking.getBookingDate() == null || booking.getStartTime() == null || booking.getEndTime() == null) {
+            throw new RuntimeException("Booking date, start time, and end time are required.");
+        }
+
+        if (booking.getPurpose() == null || booking.getPurpose().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Purpose is required.");
+        }
+
+        if (booking.getExpectedAttendees() == null || booking.getExpectedAttendees() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected attendees must be greater than 0.");
+        }
+
+        if (!booking.getStartTime().isBefore(booking.getEndTime())) {
+            throw new RuntimeException("End time must be later than start time.");
+        }
 
         List<Booking> conflictingBookings;
 
@@ -29,120 +56,110 @@ public class BookingService {
             Resource resource = resourceRepository.findById(booking.getResource().getId())
                     .orElseThrow(() -> new RuntimeException("Resource not found"));
 
-            if (resource.getStatus() != Resource.ResourceStatus.ACTIVE) {
-                throw new RuntimeException("Selected resource is not active.");
-            }
-
-            if (resource.getCapacity() != null
-                    && booking.getExpectedAttendees() != null
-                    && booking.getExpectedAttendees() > resource.getCapacity()) {
-                throw new RuntimeException("Expected attendees exceed resource capacity.");
-            }
-
-            if (resource.getAvailableFromDate() != null && booking.getBookingDate().isBefore(resource.getAvailableFromDate())) {
-                throw new RuntimeException("Booking date is before the resource available from date.");
-            }
-
-            if (resource.getAvailableToDate() != null && booking.getBookingDate().isAfter(resource.getAvailableToDate())) {
-                throw new RuntimeException("Booking date is after the resource available to date.");
-            }
-
-            if (resource.getAvailabilityStart() != null && booking.getStartTime().isBefore(resource.getAvailabilityStart())) {
-                throw new RuntimeException("Booking start time is before the resource availability start time.");
-            }
-
-            if (resource.getAvailabilityEnd() != null && booking.getEndTime().isAfter(resource.getAvailabilityEnd())) {
-                throw new RuntimeException("Booking end time is after the resource availability end time.");
-            }
-
+            validateBookingAgainstResource(booking, resource);
             booking.setResource(resource);
 
             if (booking.getFacilityName() == null || booking.getFacilityName().isBlank()) {
                 booking.setFacilityName(resource.getName());
             }
 
-            conflictingBookings =
-                    bookingRepository.findByResourceAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
-                            resource,
-                            booking.getBookingDate(),
-                            booking.getEndTime(),
-                            booking.getStartTime()
-                    );
+            conflictingBookings = bookingRepository.findByResourceAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
+                    resource,
+                    booking.getBookingDate(),
+                    booking.getEndTime(),
+                    booking.getStartTime()
+            );
         } else {
-            conflictingBookings =
-                    bookingRepository.findByFacilityNameAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
-                            booking.getFacilityName(),
-                            booking.getBookingDate(),
-                            booking.getEndTime(),
-                            booking.getStartTime()
-                    );
+            conflictingBookings = bookingRepository.findByFacilityNameAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
+                    booking.getFacilityName(),
+                    booking.getBookingDate(),
+                    booking.getEndTime(),
+                    booking.getStartTime()
+            );
         }
 
         boolean hasConflict = conflictingBookings.stream().anyMatch(existingBooking ->
                 existingBooking.getStatus() == BookingStatus.PENDING ||
-                existingBooking.getStatus() == BookingStatus.APPROVED
+                        existingBooking.getStatus() == BookingStatus.APPROVED
         );
 
         if (hasConflict) {
-        throw new BookingConflictException("Booking conflict detected for this facility and time range.");
-       }
-
-        if (booking.getBookedBy() == null || booking.getBookedBy().isBlank()) {
-            booking.setBookedBy("student1@sliit.lk");
+            throw new BookingConflictException("This resource is already booked for the selected time.");
         }
 
+        booking.setBookedBy(currentUserEmail);
         booking.setStatus(BookingStatus.PENDING);
 
         return bookingRepository.save(booking);
-        }
-
-    public List<Booking> getAllBookings() {
-        return bookingRepository.findAll();
     }
 
-    public List<Booking> getFilteredBookings(String status, String bookedBy, String facilityName, LocalDate bookingDate) {
-        if (status != null && bookedBy != null) {
-            return bookingRepository.findByStatusAndBookedByIgnoreCase(BookingStatus.valueOf(status.toUpperCase()), bookedBy);
+    public List<Booking> getFilteredBookings(
+            String status,
+            String bookedBy,
+            String facilityName,
+            LocalDate bookingDate,
+            boolean isAdmin,
+            String currentUserEmail
+    ) {
+        List<Booking> bookings = bookingRepository.findAll();
+
+        if (!isAdmin) {
+            bookings = bookings.stream()
+                    .filter(booking -> booking.getBookedBy() != null && booking.getBookedBy().equalsIgnoreCase(currentUserEmail))
+                    .toList();
         }
 
-        if (status != null && facilityName != null) {
-            return bookingRepository.findByStatusAndFacilityNameIgnoreCase(BookingStatus.valueOf(status.toUpperCase()), facilityName);
+        if (status != null && !status.isBlank()) {
+            BookingStatus bookingStatus = BookingStatus.valueOf(status.toUpperCase());
+            bookings = bookings.stream()
+                    .filter(booking -> booking.getStatus() == bookingStatus)
+                    .toList();
         }
 
-        if (status != null && bookingDate != null) {
-            return bookingRepository.findByStatusAndBookingDate(BookingStatus.valueOf(status.toUpperCase()), bookingDate);
+        if (isAdmin && bookedBy != null && !bookedBy.isBlank()) {
+            bookings = bookings.stream()
+                    .filter(booking -> booking.getBookedBy() != null && booking.getBookedBy().equalsIgnoreCase(bookedBy))
+                    .toList();
         }
 
-        if (status != null) {
-            return bookingRepository.findByStatus(BookingStatus.valueOf(status.toUpperCase()));
-        }
+        if (facilityName != null && !facilityName.isBlank()) {
+            bookings = bookings.stream()
+                    .filter(booking -> {
+                        String resolvedFacilityName = booking.getFacilityName();
+                        if ((resolvedFacilityName == null || resolvedFacilityName.isBlank()) && booking.getResource() != null) {
+                            resolvedFacilityName = booking.getResource().getName();
+                        }
 
-        if (bookedBy != null) {
-            return bookingRepository.findByBookedByIgnoreCase(bookedBy);
-        }
-
-        if (facilityName != null) {
-            return bookingRepository.findByFacilityNameIgnoreCase(facilityName);
+                        return resolvedFacilityName != null &&
+                                resolvedFacilityName.toLowerCase().contains(facilityName.toLowerCase());
+                    })
+                    .toList();
         }
 
         if (bookingDate != null) {
-            return bookingRepository.findByBookingDate(bookingDate);
+            bookings = bookings.stream()
+                    .filter(booking -> bookingDate.equals(booking.getBookingDate()))
+                    .toList();
         }
 
-        return bookingRepository.findAll();
+        return bookings;
     }
 
-    public Booking getBookingById(Long id) {
-        return bookingRepository.findById(id)
+    public Booking getBookingById(Long id, boolean isAdmin, String currentUserEmail) {
+        Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        ensureBookingAccess(booking, isAdmin, currentUserEmail);
+        return booking;
     }
 
     public List<Booking> getBookingsByFacilityAndDate(String facilityName, LocalDate bookingDate) {
         return bookingRepository.findByFacilityNameAndBookingDate(facilityName, bookingDate);
     }
 
-    public Booking approveBooking(Long id) {
-        Booking booking = getBookingById(id);
+    public Booking approveBooking(Long id, boolean isAdmin, String currentUserEmail) {
+        ensureAdminAccess(isAdmin);
+        Booking booking = getBookingById(id, isAdmin, currentUserEmail);
 
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new RuntimeException("Only PENDING bookings can be approved.");
@@ -152,34 +169,119 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    public Booking rejectBooking(Long id, String rejectionReason) {
-        Booking booking = getBookingById(id);
+    public Booking rejectBooking(Long id, String rejectionReason, boolean isAdmin, String currentUserEmail) {
+        ensureAdminAccess(isAdmin);
+        Booking booking = getBookingById(id, isAdmin, currentUserEmail);
 
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new RuntimeException("Only PENDING bookings can be rejected.");
         }
 
+        if (rejectionReason == null || rejectionReason.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejection reason is required.");
+        }
+
         booking.setStatus(BookingStatus.REJECTED);
-        booking.setRejectionReason(rejectionReason);
+        booking.setRejectionReason(rejectionReason.trim());
         return bookingRepository.save(booking);
     }
 
-    public Booking cancelBooking(Long id, String cancelReason) {
-        Booking booking = getBookingById(id);
+    public Booking cancelBooking(Long id, String cancelReason, boolean isAdmin, String currentUserEmail) {
+        Booking booking = getBookingById(id, isAdmin, currentUserEmail);
 
         if (booking.getStatus() != BookingStatus.APPROVED) {
             throw new RuntimeException("Only APPROVED bookings can be cancelled.");
         }
 
+        if (cancelReason == null || cancelReason.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cancellation reason is required.");
+        }
+
         booking.setStatus(BookingStatus.CANCELLED);
-        booking.setCancelReason(cancelReason);
+        booking.setCancelReason(cancelReason.trim());
         return bookingRepository.save(booking);
     }
 
-    public List<Booking> getBookingsByUser(String bookedBy) {
+    public List<Booking> getBookingsByUser(String bookedBy, boolean isAdmin, String currentUserEmail) {
+        if (!isAdmin && !currentUserEmail.equalsIgnoreCase(bookedBy)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only view your own bookings.");
+        }
+
         return bookingRepository.findAll()
                 .stream()
-                .filter(booking -> booking.getBookedBy().equalsIgnoreCase(bookedBy))
+                .filter(booking -> booking.getBookedBy() != null && booking.getBookedBy().equalsIgnoreCase(bookedBy))
+                .toList();
+    }
+
+    public List<Booking> getConflictBookings(Long resourceId, LocalDate bookingDate) {
+        Resource resource = resourceRepository.findById(resourceId)
+                .orElseThrow(() -> new RuntimeException("Resource not found"));
+
+        if (resource.getStatus() != Resource.ResourceStatus.ACTIVE) {
+            return List.of();
+        }
+
+        return bookingRepository.findByResourceAndBookingDate(resource, bookingDate)
+                .stream()
+                .filter(booking -> booking.getStatus() == BookingStatus.PENDING || booking.getStatus() == BookingStatus.APPROVED)
+                .toList();
+    }
+
+    private void validateBookingAgainstResource(Booking booking, Resource resource) {
+        if (resource.getStatus() != Resource.ResourceStatus.ACTIVE) {
+            throw new RuntimeException("Selected resource is not active.");
+        }
+
+        if (resource.getCapacity() != null
+                && booking.getExpectedAttendees() != null
+                && booking.getExpectedAttendees() > resource.getCapacity()) {
+            throw new RuntimeException("Expected attendees exceed resource capacity.");
+        }
+
+        if (resource.getAvailableFromDate() != null && booking.getBookingDate().isBefore(resource.getAvailableFromDate())) {
+            throw new RuntimeException("Booking date is before the resource available from date.");
+        }
+
+        if (resource.getAvailableToDate() != null && booking.getBookingDate().isAfter(resource.getAvailableToDate())) {
+            throw new RuntimeException("Booking date is after the resource available to date.");
+        }
+
+        if (resource.getAvailabilityStart() != null && booking.getStartTime().isBefore(resource.getAvailabilityStart())) {
+            throw new RuntimeException("Booking start time is before the resource availability start time.");
+        }
+
+        if (resource.getAvailabilityEnd() != null && booking.getEndTime().isAfter(resource.getAvailabilityEnd())) {
+            throw new RuntimeException("Booking end time is after the resource availability end time.");
+        }
+    }
+
+    private void ensureAdminAccess(boolean isAdmin) {
+        if (!isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access is required for this action.");
+        }
+    }
+
+    private void ensureBookingAccess(Booking booking, boolean isAdmin, String currentUserEmail) {
+        if (!isAdmin && (booking.getBookedBy() == null || !booking.getBookedBy().equalsIgnoreCase(currentUserEmail))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own bookings.");
+        }
+    }
+
+    public BookingResponse toResponse(Booking booking) {
+        String userName = null;
+
+        if (booking.getBookedBy() != null && !booking.getBookedBy().isBlank()) {
+            userName = userRepository.findByEmail(booking.getBookedBy())
+                    .map(user -> user.getName())
+                    .orElse(null);
+        }
+
+        return BookingResponse.from(booking, userName);
+    }
+
+    public List<BookingResponse> toResponses(List<Booking> bookings) {
+        return bookings.stream()
+                .map(this::toResponse)
                 .toList();
     }
 }

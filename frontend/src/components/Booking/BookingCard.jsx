@@ -1,7 +1,47 @@
+import { useState } from 'react';
 import { cancelBooking } from '../../services/bookingService';
+import {
+  getActionButtonStyle,
+  getStatusBadgeStyle,
+  infoCardStyle,
+  inProgressNoticeStyle,
+} from './bookingStyles';
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
 function BookingCard({ booking, onBookingUpdated }) {
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const detailCardStyles = {
+    ...infoCardStyle,
+    background: 'rgba(255,255,255,0.04)',
+    borderRadius: '20px',
+    padding: '1rem',
+    border: '1px solid rgba(255,255,255,0.06)',
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+    whiteSpace: 'normal',
+  };
+
+  const detailLabelStyles = {
+    display: 'block',
+    color: '#94a3b8',
+    marginBottom: '0.5rem',
+  };
+
+  const detailValueStyles = {
+    display: 'block',
+    color: '#ffffff',
+    fontWeight: '700',
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+    whiteSpace: 'normal',
+  };
+
   const handleCancel = async (id) => {
+    if (isCancelling) return;
+
     const confirmed = window.confirm(
       'Are you sure you want to cancel this booking?'
     );
@@ -14,12 +54,15 @@ function BookingCard({ booking, onBookingUpdated }) {
     }
 
     try {
+      setIsCancelling(true);
       await cancelBooking(id, reason);
       alert('Booking cancelled successfully');
       onBookingUpdated?.();
     } catch (error) {
       console.error('Cancel failed:', error);
-      alert('Failed to cancel booking');
+      alert(getApiErrorMessage(error, 'Failed to cancel booking'));
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -54,6 +97,9 @@ function BookingCard({ booking, onBookingUpdated }) {
             lineHeight: '1.2',
             margin: 0,
             color: '#ffffff',
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
           {booking.facilityName ||
@@ -61,39 +107,7 @@ function BookingCard({ booking, onBookingUpdated }) {
             'Facility Not Available'}
         </h3>
 
-        <div
-          style={{
-            padding: '0.6rem 1rem',
-            borderRadius: '999px',
-            fontWeight: '700',
-            fontSize: '0.9rem',
-            textTransform: 'uppercase',
-            background:
-              booking.status === 'APPROVED'
-                ? 'rgba(16, 185, 129, 0.18)'
-                : booking.status === 'PENDING'
-                ? 'rgba(245, 158, 11, 0.18)'
-                : booking.status === 'REJECTED'
-                ? 'rgba(239, 68, 68, 0.18)'
-                : 'rgba(107, 114, 128, 0.18)',
-            color:
-              booking.status === 'APPROVED'
-                ? '#86efac'
-                : booking.status === 'PENDING'
-                ? '#fde68a'
-                : booking.status === 'REJECTED'
-                ? '#fca5a5'
-                : '#d1d5db',
-            border:
-              booking.status === 'APPROVED'
-                ? '1px solid rgba(16,185,129,0.3)'
-                : booking.status === 'PENDING'
-                ? '1px solid rgba(245,158,11,0.3)'
-                : booking.status === 'REJECTED'
-                ? '1px solid rgba(239,68,68,0.3)'
-                : '1px solid rgba(107,114,128,0.3)',
-          }}
-        >
+        <div style={getStatusBadgeStyle(booking.status)}>
           {booking.status}
         </div>
       </div>
@@ -102,38 +116,21 @@ function BookingCard({ booking, onBookingUpdated }) {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          alignItems: 'start',
           gap: '1rem',
           marginBottom: '1.5rem',
         }}
       >
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: '20px',
-            padding: '1rem',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
-            Booking Date
-          </div>
-          <div style={{ color: '#ffffff', fontWeight: '700' }}>
+        <div style={detailCardStyles}>
+          <span style={detailLabelStyles}>Booking Date</span>
+          <span style={detailValueStyles}>
             {booking.bookingDate}
-          </div>
+          </span>
         </div>
 
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: '20px',
-            padding: '1rem',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
-            Time
-          </div>
-          <div style={{ color: '#ffffff', fontWeight: '700' }}>
+        <div style={detailCardStyles}>
+          <span style={detailLabelStyles}>Time</span>
+          <span style={detailValueStyles}>
             {booking.startTime && booking.endTime ? (
               booking.startTime < booking.endTime ? (
                 `${booking.startTime} - ${booking.endTime}`
@@ -143,42 +140,41 @@ function BookingCard({ booking, onBookingUpdated }) {
             ) : (
               'Time Not Available'
             )}
-          </div>
+          </span>
         </div>
 
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: '20px',
-            padding: '1rem',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
-            Attendees
-          </div>
-          <div style={{ color: '#ffffff', fontWeight: '700' }}>
+        <div style={detailCardStyles}>
+          <span style={detailLabelStyles}>Attendees</span>
+          <span style={detailValueStyles}>
             {booking.expectedAttendees || 0}
-          </div>
+          </span>
         </div>
       </div>
 
       <div
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: '20px',
-          padding: '1rem',
-          border: '1px solid rgba(255,255,255,0.06)',
+          ...detailCardStyles,
           marginBottom: '1.25rem',
         }}
       >
-        <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
-          Purpose
-        </div>
-        <div style={{ color: '#ffffff', fontWeight: '600', lineHeight: '1.7' }}>
+        <span style={detailLabelStyles}>Purpose</span>
+        <div
+          style={{
+            ...detailValueStyles,
+            fontWeight: '600',
+            lineHeight: '1.7',
+          }}
+        >
           {booking.purpose || 'No purpose provided'}
         </div>
       </div>
+
+      {isCancelling && (
+        <div style={{ ...inProgressNoticeStyle, marginBottom: '1.25rem' }}>
+          Cancellation in progress. Your booking list will refresh once the
+          request finishes.
+        </div>
+      )}
 
       {(booking.status === 'REJECTED' && booking.rejectionReason) ||
       (booking.status === 'CANCELLED' && booking.cancelReason) ? (
@@ -212,25 +208,27 @@ function BookingCard({ booking, onBookingUpdated }) {
 
       {booking.status === 'APPROVED' && (
         <button
+          disabled={isCancelling}
           onClick={() => handleCancel(booking.id)}
           onMouseEnter={(e) => {
+            if (isCancelling) return;
             e.target.style.background = 'rgba(107, 114, 128, 0.32)';
           }}
           onMouseLeave={(e) => {
+            if (isCancelling) return;
             e.target.style.background = 'rgba(107, 114, 128, 0.22)';
           }}
           style={{
+            ...getActionButtonStyle({
+              tone: 'cancel',
+              disabled: isCancelling,
+            }),
             padding: '0.85rem 1.4rem',
             borderRadius: '14px',
-            background: 'rgba(107, 114, 128, 0.22)',
-            border: '1px solid rgba(156, 163, 175, 0.35)',
-            color: '#e5e7eb',
-            cursor: 'pointer',
-            fontWeight: '700',
-            transition: '0.2s ease',
+            opacity: isCancelling ? 0.55 : 1,
           }}
         >
-          Cancel Booking
+          {isCancelling ? 'Cancelling...' : 'Cancel Booking'}
         </button>
       )}
     </div>

@@ -5,6 +5,15 @@ import {
   rejectBooking,
   cancelBooking,
 } from '../services/bookingService';
+import {
+  glassCardStyle,
+  getActionButtonStyle,
+  getStatusBadgeStyle,
+  infoCardStyle,
+  inProgressNoticeStyle,
+  summaryCardStyle,
+} from '../components/Booking/bookingStyles';
+import getApiErrorMessage from '../utils/getApiErrorMessage';
 
 const pageStyles = {
   wrapper: {
@@ -76,24 +85,42 @@ const filterSelectStyles = {
 };
 
 const bookingInfoCardStyles = {
+  ...infoCardStyle,
   margin: 0,
   padding: '1rem 1.1rem',
-  borderRadius: '18px',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: '#e2e8f0',
-  lineHeight: '1.7',
+  alignSelf: 'start',
+  minWidth: 0,
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
+  whiteSpace: 'normal',
+};
+
+const bookingInfoLabelStyles = {
+  display: 'block',
+  marginBottom: '0.35rem',
+};
+
+const bookingInfoValueStyles = {
+  display: 'block',
+  minWidth: 0,
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
+  whiteSpace: 'normal',
 };
 
 function AdminBookings() {
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeAction, setActiveAction] = useState(null);
 
   const [filters, setFilters] = useState({
     status: '',
     bookedBy: '',
     facilityName: '',
     bookingDate: '',
+    bookingDateFrom: '',
+    bookingDateTo: '',
+    sortBy: 'newest',
   });
 
   const fetchBookings = async () => {
@@ -104,6 +131,7 @@ function AdminBookings() {
       setAllBookings(response.data);
     } catch (error) {
       console.error('Error fetching admin bookings:', error);
+      alert(getApiErrorMessage(error, 'Failed to load bookings'));
     } finally {
       setLoading(false);
     }
@@ -124,7 +152,7 @@ function AdminBookings() {
 
     if (filters.bookedBy) {
       filtered = filtered.filter((booking) =>
-        (booking.bookedBy || '')
+        (booking.userEmail || booking.bookedBy || booking.userName || '')
           .toLowerCase()
           .includes(filters.bookedBy.toLowerCase())
       );
@@ -144,26 +172,77 @@ function AdminBookings() {
       );
     }
 
+    if (filters.bookingDateFrom) {
+      filtered = filtered.filter(
+        (booking) =>
+          booking.bookingDate && booking.bookingDate >= filters.bookingDateFrom
+      );
+    }
+
+    if (filters.bookingDateTo) {
+      filtered = filtered.filter(
+        (booking) =>
+          booking.bookingDate && booking.bookingDate <= filters.bookingDateTo
+      );
+    }
+
+    const statusOrder = {
+      PENDING: 0,
+      APPROVED: 1,
+      REJECTED: 2,
+      CANCELLED: 3,
+    };
+
+    filtered.sort((leftBooking, rightBooking) => {
+      if (filters.sortBy === 'oldest') {
+        return new Date(leftBooking.bookingDate) - new Date(rightBooking.bookingDate);
+      }
+
+      if (filters.sortBy === 'status') {
+        const leftStatusRank = statusOrder[leftBooking.status] ?? Number.MAX_SAFE_INTEGER;
+        const rightStatusRank = statusOrder[rightBooking.status] ?? Number.MAX_SAFE_INTEGER;
+
+        if (leftStatusRank !== rightStatusRank) {
+          return leftStatusRank - rightStatusRank;
+        }
+      }
+
+      if (filters.sortBy === 'facility') {
+        return (leftBooking.facilityName || leftBooking.resource?.name || '').localeCompare(
+          rightBooking.facilityName || rightBooking.resource?.name || ''
+        );
+      }
+
+      return new Date(rightBooking.bookingDate) - new Date(leftBooking.bookingDate);
+    });
+
     return filtered;
   }, [allBookings, filters]);
 
   const handleApprove = async (id) => {
+    if (activeAction) return;
+
     const confirmed = window.confirm(
       'Are you sure you want to approve this booking?'
     );
     if (!confirmed) return;
 
     try {
+      setActiveAction({ id, type: 'approve' });
       await approveBooking(id);
       alert('Booking approved successfully');
-      fetchBookings();
+      await fetchBookings();
     } catch (error) {
       console.error(error);
-      alert('Failed to approve booking');
+      alert(getApiErrorMessage(error, 'Failed to approve booking'));
+    } finally {
+      setActiveAction(null);
     }
   };
 
   const handleReject = async (id) => {
+    if (activeAction) return;
+
     const confirmed = window.confirm(
       'Are you sure you want to reject this booking?'
     );
@@ -176,16 +255,21 @@ function AdminBookings() {
     }
 
     try {
+      setActiveAction({ id, type: 'reject' });
       await rejectBooking(id, reason);
       alert('Booking rejected successfully');
-      fetchBookings();
+      await fetchBookings();
     } catch (error) {
       console.error('Reject failed:', error);
-      alert('Failed to reject booking');
+      alert(getApiErrorMessage(error, 'Failed to reject booking'));
+    } finally {
+      setActiveAction(null);
     }
   };
 
   const handleCancel = async (id) => {
+    if (activeAction) return;
+
     const confirmed = window.confirm(
       'Are you sure you want to cancel this booking?'
     );
@@ -198,12 +282,15 @@ function AdminBookings() {
     }
 
     try {
+      setActiveAction({ id, type: 'cancel' });
       await cancelBooking(id, reason);
       alert('Booking cancelled successfully');
-      fetchBookings();
+      await fetchBookings();
     } catch (error) {
       console.error('Cancel failed:', error);
-      alert('Failed to cancel booking');
+      alert(getApiErrorMessage(error, 'Failed to cancel booking'));
+    } finally {
+      setActiveAction(null);
     }
   };
 
@@ -222,6 +309,9 @@ function AdminBookings() {
       bookedBy: '',
       facilityName: '',
       bookingDate: '',
+      bookingDateFrom: '',
+      bookingDateTo: '',
+      sortBy: 'newest',
     });
   };
 
@@ -249,104 +339,96 @@ function AdminBookings() {
 
   return (
     <div style={pageStyles.wrapper}>
-<div
-  style={{
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '1rem',
-    marginBottom: '2rem',
-  }}
->
-  <div
-    style={{
-      background: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: '24px',
-      padding: '1.5rem',
-    }}
-  >
-    <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
-      Total Bookings
-    </div>
-    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#ffffff' }}>
-      {allBookings.length}
-    </div>
-    <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
-      All bookings currently in the system.
-    </div>
-  </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '1rem',
+            marginBottom: '2rem',
+          }}
+        >
+          <div
+            style={{
+              ...summaryCardStyle,
+            }}
+          >
+            <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
+              Total Bookings
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#ffffff' }}>
+              {allBookings.length}
+            </div>
+            <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
+              All bookings currently in the system.
+            </div>
+          </div>
 
-  <div
-    style={{
-      background: 'rgba(16, 185, 129, 0.08)',
-      border: '1px solid rgba(16, 185, 129, 0.25)',
-      borderRadius: '24px',
-      padding: '1.5rem',
-    }}
-  >
-    <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
-      Approved
-    </div>
-    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#d1fae5' }}>
-      {allBookings.filter((b) => b.status === 'APPROVED').length}
-    </div>
-    <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
-      Successfully approved bookings.
-    </div>
-  </div>
+          <div
+            style={{
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              borderRadius: '24px',
+              padding: '1.5rem',
+            }}
+          >
+            <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
+              Approved
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#d1fae5' }}>
+              {allBookings.filter((b) => b.status === 'APPROVED').length}
+            </div>
+            <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
+              Successfully approved bookings.
+            </div>
+          </div>
 
-  <div
-    style={{
-      background: 'rgba(245, 158, 11, 0.08)',
-      border: '1px solid rgba(245, 158, 11, 0.25)',
-      borderRadius: '24px',
-      padding: '1.5rem',
-    }}
-  >
-    <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
-      Pending
-    </div>
-    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#fde68a' }}>
-      {allBookings.filter((b) => b.status === 'PENDING').length}
-    </div>
-    <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
-      Waiting for admin review.
-    </div>
-  </div>
+          <div
+            style={{
+              background: 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.25)',
+              borderRadius: '24px',
+              padding: '1.5rem',
+            }}
+          >
+            <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
+              Pending
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#fde68a' }}>
+              {allBookings.filter((b) => b.status === 'PENDING').length}
+            </div>
+            <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
+              Waiting for admin review.
+            </div>
+          </div>
 
-  <div
-    style={{
-      background: 'rgba(239, 68, 68, 0.08)',
-      border: '1px solid rgba(239, 68, 68, 0.25)',
-      borderRadius: '24px',
-      padding: '1.5rem',
-    }}
-  >
-    <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
-      Rejected / Cancelled
-    </div>
-    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#fecaca' }}>
-      {
-        allBookings.filter(
-          (b) => b.status === 'REJECTED' || b.status === 'CANCELLED'
-        ).length
-      }
-    </div>
-    <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
-      Bookings that are no longer active.
-    </div>
-  </div>
-</div>
+          <div
+            style={{
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: '24px',
+              padding: '1.5rem',
+            }}
+          >
+            <div style={{ color: '#94a3b8', marginBottom: '0.75rem' }}>
+              Rejected / Cancelled
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#fecaca' }}>
+              {
+                allBookings.filter(
+                  (b) => b.status === 'REJECTED' || b.status === 'CANCELLED'
+                ).length
+              }
+            </div>
+            <div style={{ color: '#cbd5e1', marginTop: '0.75rem' }}>
+              Bookings that are no longer active.
+            </div>
+          </div>
+        </div>
       <div
         style={{
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderRadius: '28px',
+          ...glassCardStyle,
           padding: '2rem',
           marginBottom: '2rem',
-          background: 'rgba(255,255,255,0.04)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.22)',
         }}
       >
         <div style={pageStyles.sectionLabel}>Discover</div>
@@ -382,74 +464,119 @@ function AdminBookings() {
           Showing {filteredBookings.length} of {allBookings.length} bookings
         </p>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label>Status</label>
-          <select
-            name="status"
-            value={filters.status}
-            onChange={handleFilterChange}
-            style={filterSelectStyles}
-          >
-            <option value="" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
-              All
-            </option>
-            <option value="PENDING" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
-              PENDING
-            </option>
-            <option value="APPROVED" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
-              APPROVED
-            </option>
-            <option value="REJECTED" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
-              REJECTED
-            </option>
-            <option value="CANCELLED" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
-              CANCELLED
-            </option>
-          </select>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
+            gap: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <label>Status</label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              style={filterSelectStyles}
+            >
+              <option value="" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                All
+              </option>
+              <option value="PENDING" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                PENDING
+              </option>
+              <option value="APPROVED" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                APPROVED
+              </option>
+              <option value="REJECTED" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                REJECTED
+              </option>
+              <option value="CANCELLED" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                CANCELLED
+              </option>
+            </select>
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <label>Sort By</label>
+            <select
+              name="sortBy"
+              value={filters.sortBy}
+              onChange={handleFilterChange}
+              style={filterSelectStyles}
+            >
+              <option value="newest" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                Newest First
+              </option>
+              <option value="oldest" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                Oldest First
+              </option>
+              <option value="status" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                Status Priority
+              </option>
+              <option value="facility" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                Facility Name
+              </option>
+            </select>
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <label>Booked By</label>
+            <input
+              type="text"
+              name="bookedBy"
+              value={filters.bookedBy}
+              onChange={handleFilterChange}
+              style={filterInputStyles}
+            />
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <label>Facility Name</label>
+            <input
+              type="text"
+              name="facilityName"
+              value={filters.facilityName}
+              onChange={handleFilterChange}
+              style={filterInputStyles}
+            />
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <label>Exact Booking Date</label>
+            <input
+              type="date"
+              name="bookingDate"
+              value={filters.bookingDate}
+              onChange={handleFilterChange}
+              style={filterInputStyles}
+            />
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <label>Date From</label>
+            <input
+              type="date"
+              name="bookingDateFrom"
+              value={filters.bookingDateFrom}
+              onChange={handleFilterChange}
+              style={filterInputStyles}
+            />
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <label>Date To</label>
+            <input
+              type="date"
+              name="bookingDateTo"
+              value={filters.bookingDateTo}
+              onChange={handleFilterChange}
+              style={filterInputStyles}
+            />
+          </div>
         </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns:
-                    'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
-                  gap: '1rem',
-                  marginBottom: '1rem',
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <label>Booked By</label>
-                  <input
-                    type="text"
-                    name="bookedBy"
-                    value={filters.bookedBy}
-                    onChange={handleFilterChange}
-                    style={filterInputStyles}
-                  />
-                </div>
-
-                <div style={{ minWidth: 0 }}>
-                  <label>Facility Name</label>
-                  <input
-                    type="text"
-                    name="facilityName"
-                    value={filters.facilityName}
-                    onChange={handleFilterChange}
-                    style={filterInputStyles}
-                  />
-                </div>
-              </div>
-
-      <div style={{ marginBottom: '1rem' }}>
-        <label>Booking Date</label>
-        <input
-          type="date"
-          name="bookingDate"
-          value={filters.bookingDate}
-          onChange={handleFilterChange}
-          style={filterInputStyles}
-        />
-      </div>
 
       <button
         type="button"
@@ -478,12 +605,8 @@ function AdminBookings() {
       {filteredBookings.length === 0 ? (
         <div
           style={{
-            border: '1px solid rgba(255,255,255,0.10)',
-            borderRadius: '28px',
+            ...glassCardStyle,
             padding: '2rem',
-            background: 'rgba(255,255,255,0.04)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
             textAlign: 'center',
           }}
         >
@@ -510,15 +633,11 @@ function AdminBookings() {
           <div
             key={booking.id}
             style={{
-              border: '1px solid rgba(255,255,255,0.10)',
-              borderRadius: '28px',
+              ...glassCardStyle,
               padding: '2rem',
               marginBottom: '1.75rem',
               background:
                 'radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 28%), rgba(255,255,255,0.04)',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.20)',
             }}
           >
             <div
@@ -538,46 +657,16 @@ function AdminBookings() {
                   lineHeight: '1.2',
                   margin: 0,
                   color: '#ffffff',
+                  minWidth: 0,
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'break-word',
                 }}
               >
                 {booking.facilityName ||
                   booking.resource?.name ||
                   'Facility Name Not Available'}
               </h3>
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '0.45rem 0.95rem',
-                  borderRadius: '999px',
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
-                  letterSpacing: '0.04em',
-                  background:
-                    booking.status === 'APPROVED'
-                      ? 'rgba(16, 185, 129, 0.18)'
-                      : booking.status === 'REJECTED'
-                      ? 'rgba(239, 68, 68, 0.18)'
-                      : booking.status === 'CANCELLED'
-                      ? 'rgba(107, 114, 128, 0.22)'
-                      : 'rgba(245, 158, 11, 0.18)',
-                  border:
-                    booking.status === 'APPROVED'
-                      ? '1px solid rgba(16, 185, 129, 0.35)'
-                      : booking.status === 'REJECTED'
-                      ? '1px solid rgba(239, 68, 68, 0.35)'
-                      : booking.status === 'CANCELLED'
-                      ? '1px solid rgba(156, 163, 175, 0.35)'
-                      : '1px solid rgba(245, 158, 11, 0.35)',
-                  color:
-                    booking.status === 'APPROVED'
-                      ? '#d1fae5'
-                      : booking.status === 'REJECTED'
-                      ? '#fecaca'
-                      : booking.status === 'CANCELLED'
-                      ? '#e5e7eb'
-                      : '#fde68a',
-                }}
-              >
+              <span style={getStatusBadgeStyle(booking.status)}>
                 {booking.status}
               </span>
             </div>
@@ -586,6 +675,7 @@ function AdminBookings() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+                alignItems: 'start',
                 gap: '1rem',
                 marginTop: '1.2rem',
                 marginBottom: '1.5rem',
@@ -593,26 +683,48 @@ function AdminBookings() {
               }}
             >
               <p style={bookingInfoCardStyles}>
-                <strong>Booked By:</strong> {booking.bookedBy || 'Not Available'}
+                <strong style={bookingInfoLabelStyles}>User:</strong>
+                <span style={bookingInfoValueStyles}>
+                  {booking.userName ||
+                    booking.userEmail ||
+                    booking.bookedBy ||
+                    'Not Available'}
+                </span>
               </p>
 
               <p style={bookingInfoCardStyles}>
-                <strong>Date:</strong> {booking.bookingDate}
+                <strong style={bookingInfoLabelStyles}>User Email:</strong>
+                <span style={bookingInfoValueStyles}>
+                  {booking.userEmail || booking.bookedBy || 'Not Available'}
+                </span>
               </p>
 
               <p style={bookingInfoCardStyles}>
-                <strong>Start Time:</strong>{' '}
-                {booking.startTime || 'Not Available'}
+                <strong style={bookingInfoLabelStyles}>Date:</strong>
+                <span style={bookingInfoValueStyles}>
+                  {booking.bookingDate}
+                </span>
               </p>
 
               <p style={bookingInfoCardStyles}>
-                <strong>End Time:</strong>{' '}
-                {booking.endTime || 'Not Available'}
+                <strong style={bookingInfoLabelStyles}>Start Time:</strong>
+                <span style={bookingInfoValueStyles}>
+                  {booking.startTime || 'Not Available'}
+                </span>
               </p>
 
               <p style={bookingInfoCardStyles}>
-                <strong>Attendee Count:</strong>{' '}
-                {booking.expectedAttendees ?? 'Not Available'}
+                <strong style={bookingInfoLabelStyles}>End Time:</strong>
+                <span style={bookingInfoValueStyles}>
+                  {booking.endTime || 'Not Available'}
+                </span>
+              </p>
+
+              <p style={bookingInfoCardStyles}>
+                <strong style={bookingInfoLabelStyles}>Attendee Count:</strong>
+                <span style={bookingInfoValueStyles}>
+                  {booking.expectedAttendees ?? 'Not Available'}
+                </span>
               </p>
             </div>
 
@@ -628,6 +740,16 @@ function AdminBookings() {
                 {booking.purpose || 'Not Available'}
               </p>
             </div>
+
+            {activeAction?.id === booking.id && (
+              <div style={inProgressNoticeStyle}>
+                {activeAction.type === 'approve'
+                  ? 'Approval in progress. This booking will refresh once the request finishes.'
+                  : activeAction.type === 'reject'
+                  ? 'Rejection in progress. The booking status will update in a moment.'
+                  : 'Cancellation in progress. The booking will refresh once the update is saved.'}
+              </div>
+            )}
 
             {(booking.status === 'REJECTED' && booking.rejectionReason) ||
             (booking.status === 'CANCELLED' && booking.cancelReason) ? (
@@ -676,75 +798,78 @@ function AdminBookings() {
               {booking.status === 'PENDING' && (
                 <>
                   <button
+                    disabled={Boolean(activeAction)}
                     onClick={() => handleApprove(booking.id)}
                     onMouseEnter={(e) => {
+                      if (activeAction) return;
                       e.target.style.background = 'rgba(16, 185, 129, 0.32)';
                     }}
                     onMouseLeave={(e) => {
+                      if (activeAction) return;
                       e.target.style.background = 'rgba(16, 185, 129, 0.22)';
                     }}
                     style={{
-                      padding: '0.7rem 1rem',
-                      borderRadius: '10px',
-                      background: 'rgba(16, 185, 129, 0.22)',
-                      border: '1px solid rgba(16, 185, 129, 0.35)',
-                      color: '#d1fae5',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      transition: '0.2s ease',
-                      opacity: 0.9,
+                      ...getActionButtonStyle({
+                        tone: 'approve',
+                        disabled: Boolean(activeAction),
+                      }),
                     }}
                   >
-                    Approve
+                    {activeAction?.id === booking.id &&
+                    activeAction.type === 'approve'
+                      ? 'Approving...'
+                      : 'Approve'}
                   </button>
 
                   <button
+                    disabled={Boolean(activeAction)}
                     onClick={() => handleReject(booking.id)}
                     onMouseEnter={(e) => {
+                      if (activeAction) return;
                       e.target.style.background = 'rgba(239, 68, 68, 0.3)';
                     }}
                     onMouseLeave={(e) => {
+                      if (activeAction) return;
                       e.target.style.background = 'rgba(239, 68, 68, 0.2)';
                     }}
                     style={{
-                      padding: '0.7rem 1rem',
-                      borderRadius: '10px',
-                      background: 'rgba(239, 68, 68, 0.2)',
-                      border: '1px solid rgba(239, 68, 68, 0.35)',
-                      color: '#fecaca',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      transition: '0.2s ease',
-                      opacity: 0.9,
+                      ...getActionButtonStyle({
+                        tone: 'reject',
+                        disabled: Boolean(activeAction),
+                      }),
                     }}
                   >
-                    Reject
+                    {activeAction?.id === booking.id &&
+                    activeAction.type === 'reject'
+                      ? 'Rejecting...'
+                      : 'Reject'}
                   </button>
                 </>
               )}
 
               {booking.status === 'APPROVED' && (
                 <button
+                  disabled={Boolean(activeAction)}
                   onClick={() => handleCancel(booking.id)}
                   onMouseEnter={(e) => {
+                    if (activeAction) return;
                     e.target.style.background = 'rgba(107, 114, 128, 0.32)';
                   }}
                   onMouseLeave={(e) => {
+                    if (activeAction) return;
                     e.target.style.background = 'rgba(107, 114, 128, 0.22)';
                   }}
                   style={{
-                    padding: '0.7rem 1rem',
-                    borderRadius: '10px',
-                    background: 'rgba(107, 114, 128, 0.22)',
-                    border: '1px solid rgba(156, 163, 175, 0.35)',
-                    color: '#e5e7eb',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    transition: '0.2s ease',
-                    opacity: 0.9,
+                    ...getActionButtonStyle({
+                      tone: 'cancel',
+                      disabled: Boolean(activeAction),
+                    }),
                   }}
                 >
-                  Cancel
+                  {activeAction?.id === booking.id &&
+                  activeAction.type === 'cancel'
+                    ? 'Cancelling...'
+                    : 'Cancel'}
                 </button>
               )}
             </div>

@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navigation/Navbar';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/Navigation/RoleAwareNavbar';
 import Footer from './components/Navigation/Footer';
 import Home from './pages/Home';
 import Resources from './pages/Resources';
@@ -12,8 +12,28 @@ import PrivacyPolicy from './pages/info/PrivacyPolicy';
 import TermsOfService from './pages/info/TermsOfService';
 import Bookings from './pages/Bookings';
 import AdminBookings from './pages/AdminBookings';
+import { getCurrentUserRole } from './utils/auth';
 
 import './styles/design-system.css';
+
+function RoleRoute({ children, adminOnly = false, userOnly = false }) {
+  const token = localStorage.getItem('jwt_token');
+  const isAdmin = getCurrentUserRole() === 'ADMIN';
+
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/bookings" replace />;
+  }
+
+  if (userOnly && isAdmin) {
+    return <Navigate to="/admin/bookings" replace />;
+  }
+
+  return children;
+}
 
 function App() {
   return (
@@ -26,8 +46,30 @@ function App() {
             <Route path="/resources" element={<Resources />} />
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-            <Route path="/bookings" element={<Bookings />} />
-            <Route path="/admin/bookings" element={<AdminBookings />} />
+            <Route
+              path="/bookings"
+              element={
+                <RoleRoute userOnly>
+                  <Bookings />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/admin/bookings"
+              element={
+                <RoleRoute adminOnly>
+                  <AdminBookings />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/resources"
+              element={
+                <RoleRoute adminOnly>
+                  <Resources />
+                </RoleRoute>
+              }
+            />
             {/* Informational Pages */}
             <Route path="/about" element={<AboutUs />} />
             <Route path="/contact" element={<ContactUs />} />

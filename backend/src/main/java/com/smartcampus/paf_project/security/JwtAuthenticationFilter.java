@@ -1,12 +1,14 @@
 package com.smartcampus.paf_project.security;
 
+import com.smartcampus.paf_project.models.User;
+import com.smartcampus.paf_project.repositories.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -14,15 +16,17 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserRepository userRepository) {
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -31,9 +35,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
             String email = jwtUtil.getEmailFromToken(token);
+            User user = userRepository.findByEmail(email).orElse(null);
 
-            // In a real scenario, you'd load user details and authorities from DB.
-            UserDetails userDetails = User.builder().username(email).password("").authorities(Collections.emptyList()).build();
+            List<SimpleGrantedAuthority> authorities = user == null
+                    ? List.of()
+                    : List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+
+            UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                    .username(email)
+                    .password("")
+                    .authorities(authorities)
+                    .build();
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

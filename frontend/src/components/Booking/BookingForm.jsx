@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
-import { createBooking, getBookings } from '../../services/bookingService';
+import {
+  createBooking,
+  getBookingConflicts,
+} from '../../services/bookingService';
 import { getResources } from '../../utils/api';
+import BookingNotice from './BookingNotice';
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
 const formStyles = {
   card: {
@@ -105,8 +110,10 @@ const formStyles = {
 };
 
 function BookingForm({ onBookingCreated, currentUserEmail }) {
+  const conflictMessage = 'This resource is already booked for the selected time.';
   const [resources, setResources] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(true);
+  const [feedback, setFeedback] = useState(null);
   const [attendeeError, setAttendeeError] = useState('');
   const [bookingConflictWarning, setBookingConflictWarning] = useState('');
   const [timeRangeError, setTimeRangeError] = useState('');
@@ -227,7 +234,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
   useEffect(() => {
     const checkBookingConflict = async () => {
       if (
-        !selectedResource?.name ||
+        !selectedResource?.id ||
         !formData.bookingDate ||
         !formData.startTime ||
         !formData.endTime
@@ -242,31 +249,23 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
       }
 
       try {
-        const response = await getBookings({
-          facilityName: selectedResource.name,
+        const response = await getBookingConflicts({
+          resourceId: selectedResource.id,
           bookingDate: formData.bookingDate,
         });
 
         const conflictingBooking = (response.data || []).find((booking) => {
-          const isActiveBooking =
-            booking.status === 'PENDING' || booking.status === 'APPROVED';
           const overlaps =
             booking.startTime &&
             booking.endTime &&
             formData.startTime < booking.endTime &&
             formData.endTime > booking.startTime;
-          const isAnotherUser =
-            currentUserEmail &&
-            booking.bookedBy &&
-            booking.bookedBy.toLowerCase() !== currentUserEmail.toLowerCase();
 
-          return isActiveBooking && overlaps && isAnotherUser;
+          return overlaps;
         });
 
         if (conflictingBooking) {
-          setBookingConflictWarning(
-            `This resource is already booked by another user for the selected date and time range (${conflictingBooking.startTime} - ${conflictingBooking.endTime}).`
-          );
+          setBookingConflictWarning(conflictMessage);
           return;
         }
 
@@ -279,11 +278,10 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
 
     checkBookingConflict();
   }, [
-    currentUserEmail,
     formData.bookingDate,
     formData.endTime,
     formData.startTime,
-    selectedResource?.name,
+    selectedResource?.id,
   ]);
 
   const handleSubmit = async (e) => {
@@ -293,12 +291,18 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     const expectedAttendees = Number(formData.expectedAttendees);
 
     if (resourceId <= 0) {
-      alert('Resource ID must be greater than 0');
+      setFeedback({
+        type: 'error',
+        message: 'Please select a valid resource.',
+      });
       return;
     }
 
     if (expectedAttendees <= 0) {
-      alert('Attendee Count must be greater than 0');
+      setFeedback({
+        type: 'error',
+        message: 'Attendee count must be greater than 0.',
+      });
       return;
     }
 
@@ -313,12 +317,18 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     }
 
     if (bookingConflictWarning) {
-      alert(bookingConflictWarning);
+      setFeedback({
+        type: 'error',
+        message: bookingConflictWarning,
+      });
       return;
     }
 
     if (timeRangeError) {
-      alert(timeRangeError);
+      setFeedback({
+        type: 'error',
+        message: timeRangeError,
+      });
       return;
     }
 
@@ -335,11 +345,16 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     };
 
     try {
+      setFeedback(null);
       console.log('Booking payload being sent:', bookingPayload);
       await createBooking(bookingPayload);
-      alert('Booking created successfully');
+      setFeedback({
+        type: 'success',
+        message: 'Booking created successfully.',
+      });
 
       setFormData({
+        resourceType: '',
         resourceId: '',
         bookingDate: '',
         startTime: '',
@@ -351,28 +366,17 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
       if (onBookingCreated) {
         onBookingCreated();
       }
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      const responseData = error.response?.data;
-      let errorMessage = 'Failed to create booking';
+      } catch (error) {
+        console.error('Error creating booking:', error);
+        const errorMessage = getApiErrorMessage(
+          error,
+          'Failed to create booking'
+        );
 
-      if (typeof responseData === 'string' && responseData.trim()) {
-        errorMessage = responseData;
-      } else if (typeof responseData?.message === 'string' && responseData.message.trim()) {
-        errorMessage = responseData.message;
-      } else if (Array.isArray(responseData?.errors) && responseData.errors.length > 0) {
-        errorMessage = responseData.errors.join('\n');
-      } else if (
-        responseData?.errors &&
-        typeof responseData.errors === 'object' &&
-        Object.keys(responseData.errors).length > 0
-      ) {
-        errorMessage = Object.values(responseData.errors).flat().join('\n');
-      } else if (typeof error.message === 'string' && error.message.trim()) {
-        errorMessage = error.message;
-      }
-
-      alert(errorMessage);
+        setFeedback({
+          type: 'error',
+        message: errorMessage,
+      });
     }
   };
 
@@ -384,6 +388,14 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
         Submit a new booking request with the facility, date, time, attendees,
         and purpose in one place.
       </p>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <BookingNotice
+          type={feedback?.type}
+          message={feedback?.message}
+          onClose={() => setFeedback(null)}
+        />
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div style={formStyles.fieldGrid}>
@@ -606,6 +618,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
             value={formData.purpose}
             onChange={handleChange}
             rows="4"
+            required
             style={formStyles.textarea}
           />
         </div>
