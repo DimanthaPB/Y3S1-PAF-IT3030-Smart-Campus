@@ -20,12 +20,6 @@ public class TicketController {
     @Autowired
     private TicketService ticketService;
 
-    // CREATE ticket
-    /*@PostMapping
-    public Ticket createTicket(@RequestBody Ticket ticket) {
-        return ticketService.createTicket(ticket);
-    }*/
-
     @PostMapping
     public Ticket createTicket(@Valid @RequestBody TicketCreateRequest request) {
         return ticketService.createTicket(request);
@@ -43,12 +37,20 @@ public class TicketController {
         return ticketService.getTicketById(id);
     }
 
+    
     @PutMapping("/{id}/status")
-    public Ticket updateTicketStatus(
-            @PathVariable Long id,
-            @Valid @RequestBody TicketStatusUpdateRequest request) {
-        return ticketService.updateTicketStatus(id, request.getStatus(), request.getResolutionNotes());
-    }
+public Ticket updateTicketStatus(
+        @PathVariable Long id,
+        @Valid @RequestBody TicketStatusUpdateRequest request) {
+
+    return ticketService.updateTicketStatus(
+        id,
+        request.getStatus(),
+        request.getResolutionNotes()
+    );
+}
+
+    
 
     @PutMapping("/{id}/assignment")
     public Ticket updateTicketAssignment(

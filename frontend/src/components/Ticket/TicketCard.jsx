@@ -168,7 +168,7 @@ function TicketCard({
       });
   };
 
-  const handleStatusChange = async (e) => {
+  /*const handleStatusChange = async (e) => {
     const newStatus = e.target.value;
 
     if (
@@ -204,7 +204,55 @@ function TicketCard({
     } finally {
       setIsUpdatingStatus(false);
     }
-  };
+  };*/
+
+
+  const handleStatusChange = async (e) => {
+  const newStatus = e.target.value;
+
+  // 🔥 GET LATEST VALUE DIRECTLY FROM TEXTAREA
+  const latestNotes =
+    document.getElementById(`resolution-notes-${ticket.id}`)?.value || "";
+
+  if (
+    (newStatus === "RESOLVED" || newStatus === "CLOSED") &&
+    !latestNotes.trim()
+  ) {
+    setStatusUpdateError(
+      "Resolution notes are required when status is set to RESOLVED or CLOSED"
+    );
+    return;
+  }
+
+  setStatusValue(newStatus);
+  setIsUpdatingStatus(true);
+  setStatusUpdateError("");
+
+  try {
+    const res = await axios.put(
+      `http://localhost:8080/api/tickets/${ticket.id}/status`,
+      {
+        status: newStatus,
+        resolutionNotes: latestNotes.trim() || null
+      }
+    );
+
+    if (onTicketUpdated) {
+      onTicketUpdated(res.data);
+    }
+    if (onStatusChanged) {
+      onStatusChanged();
+    }
+  } catch (err) {
+    console.error("Status update error:", err);
+    setStatusUpdateError(
+      extractApiErrorMessage(err, "Failed to update status")
+    );
+    setStatusValue(ticket.status || "OPEN");
+  } finally {
+    setIsUpdatingStatus(false);
+  }
+};
 
   const handleAssignmentChange = async (e) => {
     const newAssignedTo = e.target.value;
@@ -264,11 +312,17 @@ function TicketCard({
         </p>
       </div>
 
-      {ticket.resolutionNotes && (
+      {/*{ticket.resolutionNotes && (
         <p className="ticket-meta-item">
           <strong>Resolution Notes:</strong> {ticket.resolutionNotes}
         </p>
-      )}
+      )}*/}
+
+      {ticket.resolutionNotes && !canEditStatus && (
+  <p className="ticket-meta-item">
+    <strong>Resolution Notes:</strong> {ticket.resolutionNotes}
+  </p>
+)}
 
       {canEditStatus && (
         <div className="ticket-status-row">
@@ -278,6 +332,7 @@ function TicketCard({
           <select
             value={statusValue}
             onChange={handleStatusChange}
+            //onChange={(e) => setStatusValue(e.target.value)}
             disabled={isUpdatingStatus}
             className="status-select"
           >
