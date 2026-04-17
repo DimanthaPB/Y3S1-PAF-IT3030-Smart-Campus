@@ -37,8 +37,12 @@ function TicketCard({
   const [currentAttachmentCount, setCurrentAttachmentCount] = useState(0);
   const [statusValue, setStatusValue] = useState(ticket.status || "OPEN");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [statusUpdateError, setStatusUpdateError] = useState("");
   const [assignedToValue, setAssignedToValue] = useState(ticket.assignedTo || "");
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
+  const [resolutionNotesValue, setResolutionNotesValue] = useState(
+    ticket.resolutionNotes || ""
+  );
 
   useEffect(() => {
     setStatusValue(ticket.status || "OPEN");
@@ -48,6 +52,10 @@ function TicketCard({
     setAssignedToValue(ticket.assignedTo || "");
   }, [ticket.assignedTo]);
 
+  useEffect(() => {
+    setResolutionNotesValue(ticket.resolutionNotes || "");
+  }, [ticket.resolutionNotes]);
+
   const visibleStatusOptions = canSetRejected
     ? STATUS_OPTIONS
     : STATUS_OPTIONS.filter((status) => status !== "REJECTED");
@@ -55,6 +63,26 @@ function TicketCard({
     ? resourcesById[String(ticket.resourceId)] || `Resource #${ticket.resourceId}`
     : "N/A";
   const remainingAttachmentSlots = Math.max(0, 3 - currentAttachmentCount);
+  const shouldShowResolutionNotesInput =
+    canEditStatus &&
+    ["IN_PROGRESS", "RESOLVED", "CLOSED"].includes(statusValue);
+  const requiresResolutionNotes = statusValue === "RESOLVED" || statusValue === "CLOSED";
+
+  const extractApiErrorMessage = (error, fallbackMessage) => {
+    const data = error?.response?.data;
+    if (typeof data?.message === "string" && data.message.trim()) {
+      return data.message;
+    }
+    if (data?.errors && typeof data.errors === "object") {
+      const firstError = Object.values(data.errors).find(
+        (message) => typeof message === "string" && message.trim()
+      );
+      if (firstError) {
+        return firstError;
+      }
+    }
+    return fallbackMessage;
+  };
 
   const isAllowedImage = (file) => {
     if (!file) {
@@ -83,15 +111,13 @@ function TicketCard({
 
     const hasInvalidFile = files.some((file) => !isAllowedImage(file));
     if (hasInvalidFile) {
-      setUploadError("Only JPG and PNG images are allowed.");
+      setUploadError("Invalid file type");
       setSelectedFiles([]);
       return;
     }
 
     if (files.length > remainingAttachmentSlots) {
-      setUploadError(
-        `You can upload only ${remainingAttachmentSlots} more image(s).`
-      );
+      setUploadError("Max 3 images allowed");
       setSelectedFiles([]);
       return;
     }
@@ -112,11 +138,7 @@ function TicketCard({
       .then((countRes) => {
         const currentCount = (countRes.data || []).length;
         if (currentCount + selectedFiles.length > 3) {
-          setUploadError(
-            `Upload limit exceeded. You can upload ${
-              3 - currentCount
-            } more image(s).`
-          );
+          setUploadError("Max 3 images allowed");
           return;
         }
 
@@ -137,24 +159,36 @@ function TicketCard({
           })
           .catch((err) => {
             console.error("Upload error:", err);
-            alert("Upload failed");
+            setUploadError(extractApiErrorMessage(err, "Upload failed"));
           });
       })
       .catch((err) => {
         console.error("Attachment count fetch error:", err);
-        alert("Unable to validate attachment limit");
+        setUploadError(extractApiErrorMessage(err, "Unable to validate attachment limit"));
       });
   };
 
   const handleStatusChange = async (e) => {
     const newStatus = e.target.value;
+
+    if (
+      (newStatus === "RESOLVED" || newStatus === "CLOSED") &&
+      !resolutionNotesValue.trim()
+    ) {
+      setStatusUpdateError(
+        "Resolution notes are required when status is set to RESOLVED or CLOSED"
+      );
+      return;
+    }
+
     setStatusValue(newStatus);
     setIsUpdatingStatus(true);
+    setStatusUpdateError("");
 
     try {
       const res = await axios.put(
         `http://localhost:8080/api/tickets/${ticket.id}/status`,
-        { status: newStatus }
+        { status: newStatus, resolutionNotes: resolutionNotesValue.trim() || null }
       );
 
       if (onTicketUpdated) {
@@ -165,7 +199,7 @@ function TicketCard({
       }
     } catch (err) {
       console.error("Status update error:", err);
-      alert("Failed to update status");
+      setStatusUpdateError(extractApiErrorMessage(err, "Failed to update status"));
       setStatusValue(ticket.status || "OPEN");
     } finally {
       setIsUpdatingStatus(false);
@@ -225,7 +259,16 @@ function TicketCard({
         <p className="ticket-meta-item">
           <strong>Resource:</strong> {selectedResourceName}
         </p>
+        <p className="ticket-meta-item">
+          <strong>Preferred Contact:</strong> {ticket.contactDetails || "N/A"}
+        </p>
       </div>
+
+      {ticket.resolutionNotes && (
+        <p className="ticket-meta-item">
+          <strong>Resolution Notes:</strong> {ticket.resolutionNotes}
+        </p>
+      )}
 
       {canEditStatus && (
         <div className="ticket-status-row">
@@ -244,6 +287,38 @@ function TicketCard({
               </option>
             ))}
           </select>
+        </div>
+      )}
+      {statusUpdateError && !shouldShowResolutionNotesInput && (
+        <p className="attachment-error-text">{statusUpdateError}</p>
+      )}
+
+      {shouldShowResolutionNotesInput && (
+        <div className="ticket-form-row">
+          <label className="ticket-form-label" htmlFor={`resolution-notes-${ticket.id}`}>
+            Resolution Notes
+          </label>
+          <textarea
+            id={`resolution-notes-${ticket.id}`}
+            className="ticket-textarea"
+            rows={3}
+            value={resolutionNotesValue}
+            onChange={(e) => {
+              setResolutionNotesValue(e.target.value);
+              if (statusUpdateError) {
+                setStatusUpdateError("");
+              }
+            }}
+            placeholder="Add resolution details"
+          />
+          {requiresResolutionNotes && !resolutionNotesValue.trim() && (
+            <p className="attachment-error-text">
+              Resolution notes are required for RESOLVED/CLOSED status
+            </p>
+          )}
+          {statusUpdateError && (
+            <p className="attachment-error-text">{statusUpdateError}</p>
+          )}
         </div>
       )}
 

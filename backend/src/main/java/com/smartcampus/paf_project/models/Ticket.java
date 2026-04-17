@@ -19,9 +19,11 @@ public class Ticket {
     private String description;
     private String category;
     private Long resourceId;
+    private String contactDetails;
 
     private String priority; // LOW, MEDIUM, HIGH
     private String status;   // OPEN, IN_PROGRESS, etc.
+    private String resolutionNotes;
 
     private Long createdBy;
     private String assignedTo;
@@ -54,11 +56,17 @@ public class Ticket {
     public Long getResourceId() { return resourceId; }
     public void setResourceId(Long resourceId) { this.resourceId = resourceId; }
 
+    public String getContactDetails() { return contactDetails; }
+    public void setContactDetails(String contactDetails) { this.contactDetails = contactDetails; }
+
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getResolutionNotes() { return resolutionNotes; }
+    public void setResolutionNotes(String resolutionNotes) { this.resolutionNotes = resolutionNotes; }
 
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }

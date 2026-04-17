@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 
 @Service
 public class FileService {
@@ -30,22 +31,25 @@ public class FileService {
     }*/
 
     public String saveFile(MultipartFile file) throws IOException {
+        String originalName = file.getOriginalFilename() == null ? "upload-image" : file.getOriginalFilename();
+        String safeFileName = Paths.get(originalName).getFileName().toString();
+        if (safeFileName.isBlank()) {
+            throw new IllegalArgumentException("Invalid file name");
+        }
 
-    String fileName = file.getOriginalFilename();
+        String storedFileName = System.currentTimeMillis() + "_" + safeFileName;
 
-    File dir = new File(uploadDir);
-    if (!dir.exists()) {
-        dir.mkdirs();
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        String filePath = dir.getAbsolutePath() + File.separator + storedFileName;
+
+        file.transferTo(new File(filePath));
+
+        return "uploads/" + storedFileName;
     }
-
-    String filePath = dir.getAbsolutePath() + File.separator + fileName;
-
-    System.out.println("Saving file to: " + filePath);
-
-    file.transferTo(new File(filePath));
-
-    return "uploads/" + fileName;
-}
 
     public void deleteFile(String relativePath) {
         if (relativePath == null || relativePath.isBlank()) {

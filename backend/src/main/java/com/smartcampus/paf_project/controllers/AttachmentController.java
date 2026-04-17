@@ -1,6 +1,7 @@
 package com.smartcampus.paf_project.controllers;
 
 import java.util.List;
+import java.nio.file.Paths;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,7 +35,7 @@ public class AttachmentController {
             @PathVariable Long ticketId,
             @RequestParam("file") MultipartFile file) throws Exception {
         if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File cannot be empty");
         }
 
         String contentType = file.getContentType();
@@ -44,22 +45,26 @@ public class AttachmentController {
                   contentType.equalsIgnoreCase("image/png"))) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Only JPG and PNG images are allowed");
+                    "Invalid file type. Only image/jpeg, image/jpg, image/png are allowed");
         }
 
         long currentCount = attachmentRepository.countByTicketId(ticketId);
         if (currentCount >= MAX_ATTACHMENTS_PER_TICKET) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Maximum 3 attachments allowed per ticket");
+                    "Maximum 3 attachments allowed");
         }
 
         String filePath = fileService.saveFile(file);
 
-        Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        String originalName = file.getOriginalFilename() == null ? "upload-image" : file.getOriginalFilename();
+        String safeFileName = Paths.get(originalName).getFileName().toString();
 
         Attachment attachment = new Attachment();
-        attachment.setFileName(file.getOriginalFilename());
+        attachment.setFileName(safeFileName);
         attachment.setFilePath(filePath);
         attachment.setTicket(ticket);
 

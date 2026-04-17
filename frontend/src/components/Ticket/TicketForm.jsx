@@ -5,7 +5,8 @@ import "../../styles/TicketManagement.css";
 const initialForm = {
   title: "",
   description: "",
-  priority: "MEDIUM"
+  priority: "MEDIUM",
+  contactDetails: ""
 };
 
 function TicketForm({ onTicketCreated }) {
@@ -18,6 +19,7 @@ function TicketForm({ onTicketCreated }) {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [fileError, setFileError] = useState("");
   const [filePreviews, setFilePreviews] = useState([]);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
     axios
@@ -86,9 +88,32 @@ function TicketForm({ onTicketCreated }) {
     );
   };
 
+  const isValidContactDetails = (value) => {
+    const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    const phonePattern = /^\+?[0-9()\-\s]{7,20}$/;
+    return emailPattern.test(value) || phonePattern.test(value);
+  };
+
+  const extractApiErrorMessage = (error, fallbackMessage) => {
+    const data = error?.response?.data;
+    if (typeof data?.message === "string" && data.message.trim()) {
+      return data.message;
+    }
+    if (data?.errors && typeof data.errors === "object") {
+      const firstError = Object.values(data.errors).find(
+        (message) => typeof message === "string" && message.trim()
+      );
+      if (firstError) {
+        return firstError;
+      }
+    }
+    return fallbackMessage;
+  };
+
   const handleFileSelection = (e) => {
     const files = Array.from(e.target.files || []);
     setFileError("");
+    setSubmitError("");
 
     if (files.length === 0) {
       setSelectedFiles([]);
@@ -96,13 +121,13 @@ function TicketForm({ onTicketCreated }) {
     }
 
     if (files.length > 3) {
-      setFileError("You can upload a maximum of 3 images per ticket.");
+      setFileError("Max 3 images allowed");
       setSelectedFiles([]);
       return;
     }
 
     if (files.some((file) => !isAllowedImage(file))) {
-      setFileError("Only JPG and PNG images are allowed.");
+      setFileError("Invalid file type");
       setSelectedFiles([]);
       return;
     }
@@ -112,6 +137,7 @@ function TicketForm({ onTicketCreated }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setSubmitError("");
     setFormData((current) => ({
       ...current,
       [name]: value
@@ -122,35 +148,47 @@ function TicketForm({ onTicketCreated }) {
     e.preventDefault();
 
     if (!formData.title.trim() || !formData.description.trim()) {
-      alert("Title and description are required");
+      setSubmitError("Title and description are required");
       return;
     }
 
     if (!selectedCategory) {
-      alert("Please select a resource category");
+      setSubmitError("Please select a resource category");
       return;
     }
 
     if (!selectedResourceId) {
-      alert("Please select a resource");
+      setSubmitError("Please select a resource");
+      return;
+    }
+
+    const normalizedContactDetails = formData.contactDetails.trim();
+    if (!normalizedContactDetails) {
+      setSubmitError("Preferred contact is required");
+      return;
+    }
+
+    if (!isValidContactDetails(normalizedContactDetails)) {
+      setSubmitError("Preferred contact must be a valid email or phone number");
       return;
     }
 
     if (fileError) {
-      alert(fileError);
+      setSubmitError(fileError);
       return;
     }
 
     if (selectedFiles.length > 3) {
-      setFileError("You can upload a maximum of 3 images per ticket.");
+      setFileError("Max 3 images allowed");
       return;
     }
 
     if (selectedFiles.some((file) => !isAllowedImage(file))) {
-      setFileError("Only JPG and PNG images are allowed.");
+      setFileError("Invalid file type");
       return;
     }
 
+    setSubmitError("");
     setIsSubmitting(true);
     try {
       const payload = {
@@ -158,7 +196,8 @@ function TicketForm({ onTicketCreated }) {
         description: formData.description.trim(),
         category: selectedCategory,
         priority: formData.priority,
-        resourceId: Number(selectedResourceId)
+        resourceId: Number(selectedResourceId),
+        contactDetails: normalizedContactDetails
       };
 
       const res = await axios.post("http://localhost:8080/api/tickets", payload);
@@ -186,9 +225,15 @@ function TicketForm({ onTicketCreated }) {
       setSearchTerm("");
       setSelectedFiles([]);
       setFileError("");
+      setSubmitError("");
     } catch (err) {
       console.error("Create ticket error:", err);
-      alert("Failed to create ticket or upload attachments");
+      setSubmitError(
+        extractApiErrorMessage(
+          err,
+          "Failed to create ticket or upload attachments"
+        )
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -231,6 +276,22 @@ function TicketForm({ onTicketCreated }) {
       </div>
 
       <div className="ticket-form-row">
+        <label className="ticket-form-label" htmlFor="ticket-contact-details">
+          Preferred Contact (email or phone)
+        </label>
+        <input
+          id="ticket-contact-details"
+          type="text"
+          name="contactDetails"
+          placeholder="example@domain.com or +94 77 123 4567"
+          value={formData.contactDetails}
+          onChange={handleChange}
+          required
+          className="ticket-input"
+        />
+      </div>
+
+      <div className="ticket-form-row">
         <label className="ticket-form-label" htmlFor="ticket-category-select">
           Resource Category
         </label>
@@ -257,15 +318,6 @@ function TicketForm({ onTicketCreated }) {
         <label className="ticket-form-label" htmlFor="resource-search-input">
           Resource
         </label>
-        {/*<input
-          id="resource-search-input"
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search resource by name"
-          className="ticket-input"
-          disabled={!selectedCategory}
-        />*/}
         <select
           value={selectedResourceId}
           onChange={(e) => setSelectedResourceId(e.target.value)}
@@ -343,6 +395,7 @@ function TicketForm({ onTicketCreated }) {
           {isSubmitting ? "Creating..." : "Submit Ticket"}
         </button>
       </div>
+      {submitError && <p className="attachment-error-text">{submitError}</p>}
     </form>
   );
 }

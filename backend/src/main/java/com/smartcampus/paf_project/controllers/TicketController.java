@@ -2,10 +2,13 @@ package com.smartcampus.paf_project.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
 
+import com.smartcampus.paf_project.dto.TicketCreateRequest;
+import com.smartcampus.paf_project.dto.TicketStatusUpdateRequest;
 import com.smartcampus.paf_project.models.Ticket;
 import com.smartcampus.paf_project.service.TicketService;
 
@@ -24,8 +27,8 @@ public class TicketController {
     }*/
 
     @PostMapping
-    public Ticket createTicket(@RequestBody Ticket ticket) {
-        return ticketService.createTicket(ticket);
+    public Ticket createTicket(@Valid @RequestBody TicketCreateRequest request) {
+        return ticketService.createTicket(request);
     }
 
     // GET all tickets
@@ -43,8 +46,8 @@ public class TicketController {
     @PutMapping("/{id}/status")
     public Ticket updateTicketStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> payload) {
-        return ticketService.updateTicketStatus(id, payload.get("status"));
+            @Valid @RequestBody TicketStatusUpdateRequest request) {
+        return ticketService.updateTicketStatus(id, request.getStatus(), request.getResolutionNotes());
     }
 
     @PutMapping("/{id}/assignment")
