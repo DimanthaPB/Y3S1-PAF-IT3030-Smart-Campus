@@ -4,48 +4,56 @@ import './InfoPage.css';
 const TermsOfService = () => {
   return (
     <div className="info-page-container">
-      <div className="info-header">
+      <section className="info-hero">
+        <p className="info-eyebrow">Platform Usage Rules</p>
         <h1>Terms of Service</h1>
-        <p>Please read these terms carefully before using the SmartCampus Hub.</p>
-      </div>
-      
-      <div className="glass-panel info-content" style={{ padding: '40px' }}>
-        <h2>1. Acceptance of Terms</h2>
+        <p className="info-lead">
+          These terms describe the expected use of SmartCampus Hub as a university operations platform for resource
+          booking, incident handling, and notification-driven workflows.
+        </p>
+      </section>
+
+      <section className="glass-panel info-content">
+        <h2>1. Acceptance of platform terms</h2>
         <p>
-          By accessing and using SmartCampus Hub ("the Platform"), you agree to be bound by these Terms of Service. If you disagree with any part of these terms, you must not access the platform.
+          By accessing SmartCampus Hub, users agree to use the platform only for appropriate university-related
+          operational purposes and in a way that respects the rules, permissions, and workflows defined by the
+          system.
         </p>
 
-        <h2>2. User Accounts</h2>
+        <h2>2. Account responsibility</h2>
         <p>
-          You are responsible for safeguarding the credentials used to access the platform. Because we utilize university-provided Single Sign-On (Google OAuth), maintaining the security of your core email account is your responsibility. Any malicious activity traced to your account will be reported to university administration.
+          Users are responsible for activity performed through their authenticated account. Access credentials,
+          third-party sign-in accounts, and personal devices used to access the platform should be kept secure.
         </p>
 
-        <h2>3. Acceptable Use</h2>
-        <p>
-          You agree not to:
-        </p>
+        <h2>3. Acceptable use</h2>
         <ul>
-          <li>Use the platform for any illegal or unauthorized academic purpose.</li>
-          <li>Attempt to breach the security of the platform or access unauthorized admin panels.</li>
-          <li>Use automation scripts or bots to spam the facility booking or notification system.</li>
-          <li>Upload malicious payloads or offensive materials via the Helpdesk attachment functions.</li>
+          <li>Provide truthful information when submitting bookings, tickets, or comments.</li>
+          <li>Do not attempt to bypass role restrictions or access unauthorized data.</li>
+          <li>Do not misuse upload features with harmful, offensive, or unrelated files.</li>
+          <li>Do not disrupt the platform through spam, automation abuse, or malicious activity.</li>
         </ul>
 
-        <h2>4. Facility Bookings</h2>
+        <h2>4. Booking and ticket conduct</h2>
         <p>
-          Any facility or asset booked through the platform must be utilized for its intended academic or official extracurricular purpose. The administration reserves the right to cancel any booking without prior notice in the event of campus emergencies.
+          Booking requests should be submitted for valid academic or operational purposes. Incident tickets should
+          include relevant details and evidence where appropriate. Administrators and staff may approve, reject,
+          update, or close records according to workflow rules and operational policy.
         </p>
 
-        <h2>5. Modification of Service</h2>
+        <h2>5. Platform changes</h2>
         <p>
-          We reserve the right to modify, suspend, or discontinue the platform (or any part thereof) at any time, with or without notice. We shall not be liable to you or to any third party for any modification or suspension of the service.
+          Features, statuses, access rules, or interface details may change as the system evolves. The team may
+          update workflows to improve usability, security, or alignment with assignment and institutional needs.
         </p>
 
-        <h2>6. Contact Information</h2>
+        <h2>6. Enforcement and support</h2>
         <p>
-          For issues regarding these Terms, please submit a query via the Contact Us page or directly to the University IT Compliance Officer.
+          Misuse of the platform may result in access restriction or administrative review. For help with access,
+          usage, or policy questions, users should use the Contact Us page or the designated support channels.
         </p>
-      </div>
+      </section>
     </div>
   );
 };
