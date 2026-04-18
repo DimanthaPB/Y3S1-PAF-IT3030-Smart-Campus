@@ -4,9 +4,6 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.smartcampus.paf_project.models.Attachment;
-import com.smartcampus.paf_project.models.Comment;
-
 @Entity
 @Table(name = "tickets")
 
