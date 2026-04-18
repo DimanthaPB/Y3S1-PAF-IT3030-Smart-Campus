@@ -1,55 +1,75 @@
 import React from 'react';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Clock3, Mail, MapPin, Phone } from 'lucide-react';
 import './InfoPage.css';
+
+const contacts = [
+  {
+    icon: MapPin,
+    title: 'Project Coordination',
+    lines: ['SmartCampus Hub Team', 'Faculty of Computing Workspace', 'SLIIT, Sri Lanka'],
+  },
+  {
+    icon: Mail,
+    title: 'Email Channels',
+    lines: ['General: smartcampus.team@campus.local', 'Technical: support.smartcampus@campus.local'],
+  },
+  {
+    icon: Phone,
+    title: 'Support Line',
+    lines: ['+94 11 555 2026', 'Weekdays, 8.30 AM - 5.00 PM'],
+  },
+  {
+    icon: Clock3,
+    title: 'Response Window',
+    lines: ['Priority incidents are reviewed first', 'General queries are answered within one working day'],
+  },
+];
 
 const ContactUs = () => {
   return (
     <div className="info-page-container">
-      <div className="info-header">
+      <section className="info-hero">
+        <p className="info-eyebrow">Support And Communication</p>
         <h1>Contact Us</h1>
-        <p>We're here to help. Reach out to our support team or technical administrators for any assistance.</p>
-      </div>
-      
-      <div className="contact-grid">
-        <div className="contact-info-block">
-          <div className="glass-panel contact-method">
-            <div className="contact-icon"><MapPin size={24} /></div>
-            <div>
-              <h4>Campus Location</h4>
-              <p>SmartCampus IT Wing, Block C</p>
-              <p>Colombo, Sri Lanka</p>
-            </div>
-          </div>
-          
-          <div className="glass-panel contact-method">
-            <div className="contact-icon"><Mail size={24} /></div>
-            <div>
-              <h4>Email Support</h4>
-              <p>General: info@smartcampus.edu</p>
-              <p>Technical: tech-support@smartcampus.edu</p>
-            </div>
-          </div>
+        <p className="info-lead">
+          Use this page for support, technical help, or questions about bookings, incidents, notifications, or access
+          to the SmartCampus Hub platform.
+        </p>
+      </section>
 
-          <div className="glass-panel contact-method">
-            <div className="contact-icon"><Phone size={24} /></div>
-            <div>
-              <h4>Hotline</h4>
-              <p>+94 11 234 5678</p>
-              <p>Available Mon-Fri, 9am - 5pm</p>
-            </div>
-          </div>
+      <section className="contact-grid">
+        <div className="contact-info-block">
+          {contacts.map(({ icon: Icon, title, lines }) => (
+            <article key={title} className="glass-panel contact-method">
+              <div className="contact-icon">
+                <Icon size={22} />
+              </div>
+              <div>
+                <h3>{title}</h3>
+                {lines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+            </article>
+          ))}
         </div>
 
-        <div className="glass-panel" style={{ padding: '32px' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '24px', color: 'white' }}>Send us a message</h3>
+        <div className="glass-panel contact-form-panel">
+          <p className="info-eyebrow">Send A Message</p>
+          <h2>Tell us what you need</h2>
+          <p className="contact-support-copy">
+            This form is styled as part of the shared project foundation and can later be connected to a backend
+            support or inquiry endpoint when the team is ready.
+          </p>
           <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
-            <input type="text" placeholder="Your Name" required />
-            <input type="email" placeholder="Your Email Address" required />
-            <textarea placeholder="How can we help you?" required></textarea>
+            <input type="text" placeholder="Your name" required />
+            <input type="email" placeholder="Your email address" required />
+            <input type="text" placeholder="Subject" required />
+            <textarea placeholder="Describe your issue or request" required></textarea>
             <button className="btn-primary" type="submit">Send Message</button>
           </form>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

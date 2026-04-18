@@ -7,6 +7,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
@@ -20,6 +21,28 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", ex.getReason() == null ? "Request failed" : ex.getReason());
+        body.put("status", ex.getStatusCode().value());
+        return ResponseEntity.status(ex.getStatusCode()).body(body);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", ex.getMessage() == null ? "Validation failed" : ex.getMessage());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", "File size exceeds the configured limit");
+        body.put("status", HttpStatus.PAYLOAD_TOO_LARGE.value());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -35,6 +58,7 @@ public class GlobalExceptionHandler {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", "Validation failed");
+        body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("errors", errors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
@@ -49,6 +73,7 @@ public class GlobalExceptionHandler {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", "Validation failed");
+        body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("errors", errors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
