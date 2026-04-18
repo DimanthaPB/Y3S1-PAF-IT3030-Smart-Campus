@@ -3,9 +3,11 @@ package com.smartcampus.paf_project.controllers;
 import com.smartcampus.paf_project.models.Resource;
 import com.smartcampus.paf_project.repositories.ResourceRepository;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -24,19 +26,22 @@ public class ResourceController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Resource>> getAllResources() {
-        return ResponseEntity.ok(resourceRepository.findAll());
+    public ResponseEntity<List<Resource>> getAllResources(Authentication authentication) {
+        return ResponseEntity.ok(getAccessibleResources(authentication));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Resource> getResourceById(@PathVariable Long id) {
+    public ResponseEntity<Resource> getResourceById(@PathVariable Long id, Authentication authentication) {
         Optional<Resource> resource = resourceRepository.findById(id);
-        return resource.map(ResponseEntity::ok)
+        return resource
+                .filter(foundResource -> isAdmin(authentication) || foundResource.getStatus() == Resource.ResourceStatus.ACTIVE)
+                .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<Resource>> searchResources(
+        Authentication authentication,
         @RequestParam(required = false) Resource.ResourceType type,
         @RequestParam(required = false) String location,
         @RequestParam(required = false) Resource.ResourceStatus status,
@@ -46,7 +51,7 @@ public class ResourceController {
         @RequestParam(required = false) LocalTime availabilityStart,
         @RequestParam(required = false) LocalTime availabilityEnd) {
 
-        List<Resource> resources = resourceRepository.findAll();
+        List<Resource> resources = getAccessibleResources(authentication);
 
         if (type != null) {
         resources = resources.stream()
@@ -141,5 +146,19 @@ public class ResourceController {
 
         resourceRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null &&
+                authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
+    private List<Resource> getAccessibleResources(Authentication authentication) {
+        if (isAdmin(authentication)) {
+            return resourceRepository.findAll();
+        }
+
+        return resourceRepository.findByStatus(Resource.ResourceStatus.ACTIVE);
     }
 }

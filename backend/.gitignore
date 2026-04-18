@@ -44,6 +44,7 @@ Thumbs.db
 .env
 env.properties
 
+node_modules/
 uploads/
 *.log
 hs_err_pid*

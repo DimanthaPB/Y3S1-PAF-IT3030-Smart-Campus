@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, Info, LogOut, Menu, User, X } from 'lucide-react';
 import NotificationModal from '../Notification/NotificationModal';
+import { isAdminUser } from '../../utils/auth';
 import { clearStoredToken, getStoredToken } from '../../utils/api';
 import './Navbar.css';
 
@@ -16,11 +17,14 @@ const Navbar = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const notifRef = useRef();
   const location = useLocation();
 
   useEffect(() => {
+    setIsAuthenticated(!!localStorage.getItem('jwt_token'));
+    setIsAdmin(isAdminUser());
     setIsAuthenticated(!!getStoredToken());
     setMobileMenuOpen(false);
     setIsNotifOpen(false);
@@ -40,6 +44,7 @@ const Navbar = () => {
   const handleLogout = () => {
     clearStoredToken();
     setIsAuthenticated(false);
+    setIsAdmin(false);
     window.location.href = '/';
   };
 
@@ -76,6 +81,11 @@ const Navbar = () => {
           {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
+          {/* ✅ ADD THIS */}
+        {isAuthenticated && isAdmin && <Link to="/resources">Resources</Link>}
+        {isAuthenticated && !isAdmin && <Link to="/bookings">My Bookings</Link>}
+        {isAuthenticated && isAdmin && <Link to="/admin/bookings">Admin Bookings</Link
+      </div>
         <div className={`navbar-links ${mobileMenuOpen ? 'open' : ''}`}>
           {navigationLinks.map((item) => (
             <Link
