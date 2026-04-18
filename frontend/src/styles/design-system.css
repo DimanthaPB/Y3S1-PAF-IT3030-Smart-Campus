@@ -20,6 +20,9 @@
 
   /* Typography */
   --font-main: 'Outfit', sans-serif;
+  --text-h1: clamp(1.5rem, 2.2vw, 2rem);
+  --text-h2: clamp(1.2rem, 1.6vw, 1.45rem);
+  --text-body: 0.98rem;
 }
 
 body {
@@ -30,6 +33,14 @@ body {
                     radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
   color: var(--color-text-primary);
   min-height: 100vh;
+  box-sizing: border-box;
+  font-size: var(--text-body);
+  line-height: 1.45;
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
