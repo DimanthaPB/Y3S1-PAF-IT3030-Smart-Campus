@@ -20,6 +20,7 @@ function TicketForm({ onTicketCreated }) {
   const [fileError, setFileError] = useState("");
   const [filePreviews, setFilePreviews] = useState([]);
   const [submitError, setSubmitError] = useState("");
+  const [contactError, setContactError] = useState("");
 
   useEffect(() => {
     axios
@@ -88,11 +89,26 @@ function TicketForm({ onTicketCreated }) {
     );
   };
 
-  const isValidContactDetails = (value) => {
-    const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    const phonePattern = /^\+?[0-9()\-\s]{7,20}$/;
-    return emailPattern.test(value) || phonePattern.test(value);
-  };
+
+const isValidContactDetails = (value) => {
+  const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  const phonePattern = /^[0-9]{10}$/; 
+  return emailPattern.test(value) || phonePattern.test(value);
+};
+
+const validateContact = (value) => {
+  const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  const phonePattern = /^[0-9]{10}$/; 
+  if (!value.trim()) {
+    return "Preferred contact is required";
+  }
+
+  if (!emailPattern.test(value) && !phonePattern.test(value)) {
+    return "Enter a valid email or a 10-digit phone number";
+  }
+
+  return "";
+};
 
   const extractApiErrorMessage = (error, fallbackMessage) => {
     const data = error?.response?.data;
@@ -111,29 +127,26 @@ function TicketForm({ onTicketCreated }) {
   };
 
   const handleFileSelection = (e) => {
-    const files = Array.from(e.target.files || []);
-    setFileError("");
-    setSubmitError("");
+  const files = Array.from(e.target.files || []);
+  setSubmitError("");
 
-    if (files.length === 0) {
-      setSelectedFiles([]);
-      return;
-    }
+  if (files.length === 0) return;
 
-    if (files.length > 3) {
-      setFileError("Max 3 images allowed");
-      setSelectedFiles([]);
-      return;
-    }
+  if (selectedFiles.length + files.length > 3) {
+    setFileError("You can only upload up to 3 images per ticket");
+    return;
+  }
 
-    if (files.some((file) => !isAllowedImage(file))) {
-      setFileError("Invalid file type");
-      setSelectedFiles([]);
-      return;
-    }
+  if (files.some((file) => !isAllowedImage(file))) {
+    setFileError("Invalid file type");
+    return;
+  }
 
-    setSelectedFiles(files);
-  };
+  setFileError("");
+
+  setSelectedFiles((prev) => [...prev, ...files]);
+
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -285,11 +298,23 @@ function TicketForm({ onTicketCreated }) {
           name="contactDetails"
           placeholder="example@domain.com or +94 77 123 4567"
           value={formData.contactDetails}
-          onChange={handleChange}
+          onChange={(e) => {
+            handleChange(e);
+            if (contactError) {
+              setContactError(validateContact(e.target.value));
+            }
+          }}
+          onBlur={() => {
+            setContactError(validateContact(formData.contactDetails));
+          }}
           required
           className="ticket-input"
         />
       </div>
+
+      {contactError && (
+        <p className="attachment-error-text">{contactError}</p>
+      )}
 
       <div className="ticket-form-row">
         <label className="ticket-form-label" htmlFor="ticket-category-select">
@@ -359,18 +384,36 @@ function TicketForm({ onTicketCreated }) {
           {`Selected: ${selectedFiles.length}/3 image(s)`}
         </p>
         {fileError && <p className="attachment-error-text">{fileError}</p>}
+
         {filePreviews.length > 0 && (
           <div className="ticket-file-preview-grid">
             {filePreviews.map((previewUrl, index) => (
+              <div key={`${previewUrl}-${index}`} className="attachment-preview-wrapper">
+
               <img
-                key={`${previewUrl}-${index}`}
                 src={previewUrl}
                 alt={`Attachment preview ${index + 1}`}
                 className="ticket-file-preview-image"
               />
-            ))}
-          </div>
-        )}
+
+              <button
+                type="button"
+                className="attachment-remove-btn"
+                onClick={() => {
+                  setSelectedFiles((prev) =>
+                    prev.filter((_, i) => i !== index)
+                  );
+                  setFileError(""); 
+                }}
+              >
+                ×
+              </button>
+
+      </div>
+    ))}
+  </div>
+)}
+
       </div>
 
       <div className="ticket-form-row">
