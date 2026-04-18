@@ -13,6 +13,8 @@ import PrivacyPolicy from './pages/info/PrivacyPolicy';
 import TermsOfService from './pages/info/TermsOfService';
 import TicketList from "./components/Ticket/TicketList";
 import TechTicketList from "./components/Ticket/TechTicketList";
+import Login from './pages/auth/Login';
+
 import './styles/design-system.css';
 
 function App() {
@@ -31,6 +33,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/preferences" element={<Preferences />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
             
             {/* Informational Pages */}

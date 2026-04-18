@@ -1,5 +1,6 @@
 package com.smartcampus.paf_project.security;
 
+import com.smartcampus.paf_project.models.AuthProvider;
 import com.smartcampus.paf_project.models.NotificationPreference;
 import com.smartcampus.paf_project.models.Role;
 import com.smartcampus.paf_project.models.User;
@@ -42,7 +43,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     .email(email)
                     .name(name)
                     .avatarUrl(avatar)
-                    .provider("google")
+                    .authProvider(AuthProvider.GOOGLE)
                     .role(Role.USER) // Default role
                     .build();
 
@@ -55,6 +56,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     .build();
             user.setNotificationPreference(prefs);
 
+            userRepository.save(user);
+        } else if (user.getAuthProvider() == null) {
+            user.setAuthProvider(AuthProvider.GOOGLE);
             userRepository.save(user);
         }
 

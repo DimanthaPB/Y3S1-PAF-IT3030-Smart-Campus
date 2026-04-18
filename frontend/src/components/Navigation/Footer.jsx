@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Globe, MessageCircle, Share2, Mail } from 'lucide-react';
+import { BellRing, Mail, MapPin, ShieldCheck } from 'lucide-react';
 import './Footer.css';
 
 const Footer = () => {
@@ -8,32 +8,32 @@ const Footer = () => {
     <footer className="footer-glass">
       <div className="footer-container">
         <div className="footer-grid">
-          
           <div className="footer-section brand-section">
-            <Link to="/" className="brand-logo footer-logo">SmartCampus<span className="hub">Hub</span></Link>
+            <Link to="/" className="brand-logo footer-logo">
+              SmartCampus<span className="hub">Hub</span>
+            </Link>
             <p className="footer-desc">
-              The next-generation centralized platform for managing university operations securely, efficiently, and elegantly.
+              A shared Smart Campus Operations Hub for facilities, bookings, incident handling, notifications, and
+              secure role-aware access across the university workflow.
             </p>
-            <div className="social-links">
-              <a href="#" className="social-icon"><MessageCircle size={18} /></a>
-              <a href="#" className="social-icon"><Share2 size={18} /></a>
-              <a href="#" className="social-icon"><Globe size={18} /></a>
-              <a href="#" className="social-icon"><Mail size={18} /></a>
+            <div className="footer-highlights">
+              <span><BellRing size={15} /> Notifications</span>
+              <span><ShieldCheck size={15} /> OAuth Access</span>
             </div>
           </div>
 
           <div className="footer-section">
-            <h4>Quick Links</h4>
+            <h4>Explore</h4>
             <ul>
               <li><Link to="/">Home</Link></li>
               <li><Link to="/about">About Us</Link></li>
-              <li><Link to="/contact">Contact Us</Link></li>
               <li><Link to="/faq">FAQs</Link></li>
+              <li><Link to="/contact">Contact Us</Link></li>
             </ul>
           </div>
 
           <div className="footer-section">
-            <h4>Legal</h4>
+            <h4>Policies</h4>
             <ul>
               <li><Link to="/privacy">Privacy Policy</Link></li>
               <li><Link to="/terms">Terms of Service</Link></li>
@@ -41,15 +41,15 @@ const Footer = () => {
           </div>
 
           <div className="footer-section contact-info">
-            <h4>Contact Details</h4>
-            <p>Smart Campus HQ, University Wing</p>
-            <p>Email: support@smartcampus.edu</p>
-            <p>Phone: +1 800-CAMPUS-HUB</p>
+            <h4>Project Contact</h4>
+            <p><MapPin size={15} /> Faculty of Computing, SLIIT</p>
+            <p><Mail size={15} /> smartcampus.team@campus.local</p>
+            <p>Built for IT3030 PAF 2026 group coursework.</p>
           </div>
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} SmartCampus Hub. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} SmartCampus Hub. Built for Smart Campus Operations Hub coursework.</p>
         </div>
       </div>
     </footer>
