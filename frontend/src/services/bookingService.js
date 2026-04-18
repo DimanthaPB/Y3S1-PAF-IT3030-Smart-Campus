@@ -33,3 +33,11 @@ export const cancelBooking = async (bookingId, reason) => {
     params: { reason },
   });
 };
+
+export const updateBooking = async (bookingId, bookingData) => {
+  return await api.put(`${API_BASE_URL}/${bookingId}`, bookingData);
+};
+
+export const deleteBooking = async (bookingId) => {
+  return await api.delete(`${API_BASE_URL}/${bookingId}`);
+};

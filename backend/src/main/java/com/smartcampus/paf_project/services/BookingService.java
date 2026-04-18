@@ -34,21 +34,7 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You must be logged in to create a booking.");
         }
 
-        if (booking.getBookingDate() == null || booking.getStartTime() == null || booking.getEndTime() == null) {
-            throw new RuntimeException("Booking date, start time, and end time are required.");
-        }
-
-        if (booking.getPurpose() == null || booking.getPurpose().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Purpose is required.");
-        }
-
-        if (booking.getExpectedAttendees() == null || booking.getExpectedAttendees() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected attendees must be greater than 0.");
-        }
-
-        if (!booking.getStartTime().isBefore(booking.getEndTime())) {
-            throw new RuntimeException("End time must be later than start time.");
-        }
+        validateBookingInput(booking);
 
         List<Booking> conflictingBookings;
 
@@ -91,6 +77,48 @@ public class BookingService {
         booking.setStatus(BookingStatus.PENDING);
 
         return bookingRepository.save(booking);
+    }
+
+    public Booking updateBooking(Long id, Booking updatedBooking, boolean isAdmin, String currentUserEmail) {
+        Booking existingBooking = getBookingById(id, isAdmin, currentUserEmail);
+
+        if (existingBooking.getStatus() != BookingStatus.PENDING) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only PENDING bookings can be edited."
+            );
+        }
+
+        validateBookingInput(updatedBooking);
+
+        Resource resource = resolveBookingResource(updatedBooking);
+        validateBookingAgainstResource(updatedBooking, resource);
+        ensureNoConflicts(updatedBooking, resource, existingBooking.getId());
+
+        existingBooking.setResource(resource);
+        existingBooking.setFacilityName(resource.getName());
+        existingBooking.setBookingDate(updatedBooking.getBookingDate());
+        existingBooking.setStartTime(updatedBooking.getStartTime());
+        existingBooking.setEndTime(updatedBooking.getEndTime());
+        existingBooking.setPurpose(updatedBooking.getPurpose().trim());
+        existingBooking.setExpectedAttendees(updatedBooking.getExpectedAttendees());
+        existingBooking.setRejectionReason(null);
+        existingBooking.setCancelReason(null);
+
+        return bookingRepository.save(existingBooking);
+    }
+
+    public void deleteBooking(Long id, boolean isAdmin, String currentUserEmail) {
+        Booking booking = getBookingById(id, isAdmin, currentUserEmail);
+
+        if (!isAdmin && booking.getStatus() == BookingStatus.APPROVED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Approved bookings must be cancelled before they can be deleted."
+            );
+        }
+
+        bookingRepository.delete(booking);
     }
 
     public List<Booking> getFilteredBookings(
@@ -252,6 +280,53 @@ public class BookingService {
 
         if (resource.getAvailabilityEnd() != null && booking.getEndTime().isAfter(resource.getAvailabilityEnd())) {
             throw new RuntimeException("Booking end time is after the resource availability end time.");
+        }
+    }
+
+    private void validateBookingInput(Booking booking) {
+        if (booking.getBookingDate() == null || booking.getStartTime() == null || booking.getEndTime() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Booking date, start time, and end time are required.");
+        }
+
+        if (booking.getPurpose() == null || booking.getPurpose().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Purpose is required.");
+        }
+
+        if (booking.getExpectedAttendees() == null || booking.getExpectedAttendees() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected attendees must be greater than 0.");
+        }
+
+        if (!booking.getStartTime().isBefore(booking.getEndTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be later than start time.");
+        }
+
+        if (booking.getResource() == null || booking.getResource().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid resource is required.");
+        }
+    }
+
+    private Resource resolveBookingResource(Booking booking) {
+        return resourceRepository.findById(booking.getResource().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource not found"));
+    }
+
+    private void ensureNoConflicts(Booking booking, Resource resource, Long bookingIdToIgnore) {
+        List<Booking> conflictingBookings = bookingRepository
+                .findByResourceAndBookingDateAndStartTimeLessThanAndEndTimeGreaterThan(
+                        resource,
+                        booking.getBookingDate(),
+                        booking.getEndTime(),
+                        booking.getStartTime()
+                );
+
+        boolean hasConflict = conflictingBookings.stream().anyMatch(existingBooking ->
+                !existingBooking.getId().equals(bookingIdToIgnore) &&
+                        (existingBooking.getStatus() == BookingStatus.PENDING ||
+                                existingBooking.getStatus() == BookingStatus.APPROVED)
+        );
+
+        if (hasConflict) {
+            throw new BookingConflictException("This resource is already booked for the selected time.");
         }
     }
 

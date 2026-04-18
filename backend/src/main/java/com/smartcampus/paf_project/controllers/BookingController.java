@@ -98,6 +98,18 @@ public class BookingController {
         );
     }
 
+    @PutMapping("/{id}")
+    public BookingResponse updateBooking(@PathVariable Long id, @RequestBody Booking booking, Authentication authentication) {
+        return bookingService.toResponse(
+                bookingService.updateBooking(id, booking, isAdmin(authentication), authentication.getName())
+        );
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteBooking(@PathVariable Long id, Authentication authentication) {
+        bookingService.deleteBooking(id, isAdmin(authentication), authentication.getName());
+    }
+
     private boolean isAdmin(Authentication authentication) {
         return authentication != null &&
                 authentication.getAuthorities().stream()

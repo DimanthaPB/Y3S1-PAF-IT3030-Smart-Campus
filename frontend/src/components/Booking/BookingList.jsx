@@ -1,36 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { getBookings } from '../../services/bookingService';
+import { useMemo } from 'react';
 import BookingCard from './BookingCard';
 
-function BookingList({ filters, refreshKey, currentUserEmail }) {
-  const [allBookings, setAllBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchBookings = async () => {
-    if (!currentUserEmail) {
-      setAllBookings([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await getBookings({ bookedBy: currentUserEmail });
-      setAllBookings(response.data);
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBookings();
-  }, [currentUserEmail, refreshKey]);
-
+function BookingList({ bookings, filters, loading, onBookingUpdated }) {
   const filteredBookings = useMemo(() => {
-    let filtered = [...allBookings];
+    let filtered = [...bookings];
 
     if (filters.status) {
       filtered = filtered.filter((booking) =>
@@ -63,7 +36,7 @@ function BookingList({ filters, refreshKey, currentUserEmail }) {
     }
 
     return filtered;
-  }, [allBookings, filters]);
+  }, [bookings, filters]);
 
   if (loading) {
     return (
@@ -148,7 +121,7 @@ function BookingList({ filters, refreshKey, currentUserEmail }) {
           <BookingCard
             key={booking.id}
             booking={booking}
-            onBookingUpdated={fetchBookings}
+            onBookingUpdated={onBookingUpdated}
           />
         ))
       )}

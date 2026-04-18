@@ -53,6 +53,7 @@ const RoleAwareNavbar = () => {
           <Link to="/resources">Manage Resources</Link>
         )}
         {isAuthenticated && !isAdmin && <Link to="/bookings">My Bookings</Link>}
+        {isAuthenticated && !isAdmin && <Link to="/catalogue">Resource Catalogue</Link>}
         {isAuthenticated && <Link to="/preferences">Preferences</Link>}
       </div>
 

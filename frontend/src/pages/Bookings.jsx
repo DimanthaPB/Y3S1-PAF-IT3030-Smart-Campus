@@ -51,6 +51,7 @@ const pageStyles = {
 function Bookings() {
   const currentUserEmail = getCurrentUserEmail();
   const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     status: '',
     bookedBy: '',
@@ -58,29 +59,56 @@ function Bookings() {
     bookingDate: '',
   });
 
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const handleBookingCreated = () => {
-    setRefreshKey((prev) => prev + 1);
-  };
-
   useEffect(() => {
     const fetchBookings = async () => {
       if (!currentUserEmail) {
         setBookings([]);
+        setLoading(false);
         return;
       }
 
       try {
+        setLoading(true);
         const response = await getBookings({ bookedBy: currentUserEmail });
         setBookings(response.data);
       } catch (error) {
         console.error('Error fetching bookings summary:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchBookings();
-  }, [currentUserEmail, refreshKey]);
+  }, [currentUserEmail]);
+
+  const handleBookingCreated = (newBooking) => {
+    if (!newBooking?.id) {
+      return;
+    }
+
+    setBookings((previousBookings) => [newBooking, ...previousBookings]);
+  };
+
+  const handleBookingChanged = (change) => {
+    if (!change) {
+      return;
+    }
+
+    if (change.type === 'delete' && change.bookingId) {
+      setBookings((previousBookings) =>
+        previousBookings.filter((booking) => booking.id !== change.bookingId)
+      );
+      return;
+    }
+
+    if (change.type === 'update' && change.booking?.id) {
+      setBookings((previousBookings) =>
+        previousBookings.map((booking) =>
+          booking.id === change.booking.id ? change.booking : booking
+        )
+      );
+    }
+  };
 
   const filteredBookings = useMemo(() => {
     let filtered = [...bookings];
@@ -234,9 +262,10 @@ function Bookings() {
 
       <div style={{ marginTop: '2rem' }}>
         <BookingList
+          bookings={bookings}
           filters={filters}
-          refreshKey={refreshKey}
-          currentUserEmail={currentUserEmail}
+          loading={loading}
+          onBookingUpdated={handleBookingChanged}
         />
       </div>
     </div>

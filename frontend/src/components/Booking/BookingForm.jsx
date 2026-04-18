@@ -44,6 +44,12 @@ const formStyles = {
     gap: '1rem',
     marginBottom: '1rem',
   },
+  availabilityGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '1rem',
+    marginBottom: '1rem',
+  },
   fieldWrap: {
     minWidth: 0,
   },
@@ -110,7 +116,8 @@ const formStyles = {
 };
 
 function BookingForm({ onBookingCreated, currentUserEmail }) {
-  const conflictMessage = 'This resource is already booked for the selected time.';
+  const conflictMessage =
+    'This time is already selected by another booking. Please choose a different start or end time.';
   const [resources, setResources] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(true);
   const [feedback, setFeedback] = useState(null);
@@ -347,11 +354,9 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     try {
       setFeedback(null);
       console.log('Booking payload being sent:', bookingPayload);
-      await createBooking(bookingPayload);
-      setFeedback({
-        type: 'success',
-        message: 'Booking created successfully.',
-      });
+      const response = await createBooking(bookingPayload);
+      setFeedback(null);
+      alert('Booking created successfully.');
 
       setFormData({
         resourceType: '',
@@ -364,7 +369,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
       });
 
       if (onBookingCreated) {
-        onBookingCreated();
+        onBookingCreated(response.data);
       }
       } catch (error) {
         console.error('Error creating booking:', error);
@@ -470,10 +475,30 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
                   </option>
                 ))}
             </select>
-            {selectedResource ? (
+          </div>
+
+          <div style={formStyles.fieldWrap}>
+            <label style={formStyles.label}>Booking Date</label>
+            <input
+              type="date"
+              name="bookingDate"
+              value={formData.bookingDate}
+              onChange={handleChange}
+              required
+              min={availableFromDate || undefined}
+              max={availableToDate || undefined}
+              style={formStyles.input}
+            />
+          </div>
+        </div>
+
+        {selectedResource ? (
+          <div style={formStyles.availabilityGrid}>
+            <div style={formStyles.fieldWrap} />
+            <div style={formStyles.fieldWrap}>
               <div
                 style={{
-                  marginTop: '0.75rem',
+                  marginTop: '0.15rem',
                   padding: '0.9rem 1rem',
                   borderRadius: '14px',
                   background: 'rgba(255,255,255,0.04)',
@@ -499,23 +524,11 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
                     : 'Not specified'}
                 </div>
               </div>
-            ) : null}
+            </div>
           </div>
+        ) : null}
 
-          <div style={formStyles.fieldWrap}>
-            <label style={formStyles.label}>Booking Date</label>
-            <input
-              type="date"
-              name="bookingDate"
-              value={formData.bookingDate}
-              onChange={handleChange}
-              required
-              min={availableFromDate || undefined}
-              max={availableToDate || undefined}
-              style={formStyles.input}
-            />
-          </div>
-
+        <div style={formStyles.fieldGrid}>
           <div style={formStyles.fieldWrap}>
             <label style={formStyles.label}>Start Time</label>
             <input
@@ -528,6 +541,18 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
               max={availabilityEnd || undefined}
               style={formStyles.input}
             />
+            {bookingConflictWarning ? (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  color: '#fca5a5',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.5',
+                }}
+              >
+                {bookingConflictWarning}
+              </div>
+            ) : null}
           </div>
 
           <div style={formStyles.fieldWrap}>
@@ -552,6 +577,18 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
                 }}
               >
                 {timeRangeError}
+              </div>
+            ) : null}
+            {bookingConflictWarning ? (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  color: '#fca5a5',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.5',
+                }}
+              >
+                {bookingConflictWarning}
               </div>
             ) : null}
           </div>
@@ -582,18 +619,6 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
                 }}
               >
                 Maximum attendees for this resource: {selectedResourceCapacity}
-              </div>
-            ) : null}
-            {bookingConflictWarning ? (
-              <div
-                style={{
-                  marginTop: '0.55rem',
-                  color: '#fca5a5',
-                  fontSize: '0.9rem',
-                  lineHeight: '1.5',
-                }}
-              >
-                {bookingConflictWarning}
               </div>
             ) : null}
             {attendeeError ? (

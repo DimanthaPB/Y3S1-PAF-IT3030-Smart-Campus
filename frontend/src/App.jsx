@@ -3,6 +3,7 @@ import Navbar from './components/Navigation/RoleAwareNavbar';
 import Footer from './components/Navigation/Footer';
 import Home from './pages/Home';
 import Resources from './pages/Resources';
+import UserResources from './pages/UserResources';
 import Preferences from './pages/Preferences';
 import OAuth2RedirectHandler from './pages/OAuth2RedirectHandler';
 import AboutUs from './pages/info/AboutUs';
@@ -43,7 +44,6 @@ function App() {
         <main style={{ flex: 1 }}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/resources" element={<Resources />} />
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
             <Route
@@ -59,6 +59,14 @@ function App() {
               element={
                 <RoleRoute adminOnly>
                   <AdminBookings />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/catalogue"
+              element={
+                <RoleRoute userOnly>
+                  <UserResources />
                 </RoleRoute>
               }
             />
