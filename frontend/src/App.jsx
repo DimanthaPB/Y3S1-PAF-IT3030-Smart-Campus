@@ -9,6 +9,7 @@ import ContactUs from './pages/info/ContactUs';
 import FAQ from './pages/info/FAQ';
 import PrivacyPolicy from './pages/info/PrivacyPolicy';
 import TermsOfService from './pages/info/TermsOfService';
+import Login from './pages/auth/Login';
 
 import './styles/design-system.css';
 
@@ -21,6 +22,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/preferences" element={<Preferences />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
             
             {/* Informational Pages */}

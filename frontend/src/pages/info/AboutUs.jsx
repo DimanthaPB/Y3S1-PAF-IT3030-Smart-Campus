@@ -1,38 +1,99 @@
 import React from 'react';
+import { BellRing, CalendarClock, ShieldCheck, Wrench } from 'lucide-react';
 import './InfoPage.css';
+
+const pillars = [
+  {
+    icon: CalendarClock,
+    title: 'Operational clarity',
+    description:
+      'Booking requests, approvals, cancellations, and resource visibility are managed through one clear workflow.',
+  },
+  {
+    icon: Wrench,
+    title: 'Reliable issue handling',
+    description:
+      'Maintenance incidents can be reported, assigned, updated, and resolved with proper status tracking.',
+  },
+  {
+    icon: BellRing,
+    title: 'Meaningful notifications',
+    description:
+      'Users stay informed when bookings change, tickets progress, or comments are added to their records.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Secure access control',
+    description:
+      'OAuth sign-in and role-based authorization help protect workflows for users, admins, and staff.',
+  },
+];
 
 const AboutUs = () => {
   return (
     <div className="info-page-container">
-      <div className="info-header">
-        <h1>About SmartCampus</h1>
-        <p>Revolutionizing university life by connecting students, faculty, and administration through a single, elegant platform.</p>
-      </div>
-      
-      <div className="glass-panel info-content" style={{ padding: '40px' }}>
-        <h2>Our Mission</h2>
-        <p>
-          At SmartCampus, our mission is to eliminate the friction of daily campus operations. We believe in providing an ecosystem where booking facilities, tracking academic progress, and managing administrative tasks are as seamless as checking your email.
+      <section className="info-hero">
+        <p className="info-eyebrow">Smart Campus Operations Hub</p>
+        <h1>About Us</h1>
+        <p className="info-lead">
+          SmartCampus Hub is a coursework-driven university operations platform built for the IT3030 PAF 2026
+          assignment. It is designed to bring facility bookings, asset tracking, incident ticketing, notifications,
+          and secure access into one connected experience.
         </p>
+      </section>
 
-        <h2>Who We Are</h2>
-        <p>
-          We are a dedicated team of engineers, designers, and educators who understand the complexities of higher education infrastructure. By leveraging cutting-edge web technologies and prioritizing user experience, we've built a system that adapts to your university's unique needs.
-        </p>
+      <section className="glass-panel info-content">
+        <div className="info-grid">
+          <div>
+            <h2>Why this platform exists</h2>
+            <p>
+              Universities handle many daily operational requests across different systems and departments. Our goal
+              is to reduce that friction by providing a single web application where users can discover resources,
+              request bookings, report problems, and follow updates without losing visibility.
+            </p>
+          </div>
+          <div>
+            <h2>What the system covers</h2>
+            <p>
+              The platform reflects the assignment brief directly: facilities and assets catalogue management, booking
+              workflows, maintenance and incident ticketing, notifications, and role-based authentication and
+              authorization.
+            </p>
+          </div>
+        </div>
 
-        <h2>Core Values</h2>
-        <ul>
-          <li><strong>Innovation:</strong> Constantly evolving to integrate the newest and most efficient technologies.</li>
-          <li><strong>Security:</strong> Safeguarding student and faculty data with enterprise-grade encryption.</li>
-          <li><strong>Accessibility:</strong> Designing elegant, intuitive interfaces that anyone can navigate easily.</li>
-          <li><strong>Reliability:</strong> Ensuring 99.9% uptime so your campus never skips a beat.</li>
-        </ul>
+        <h2>Design principles</h2>
+        <div className="info-card-grid">
+          {pillars.map(({ icon: Icon, title, description }) => (
+            <article key={title} className="info-card">
+              <div className="info-card-icon">
+                <Icon size={24} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
 
-        <h2>Looking Forward</h2>
-        <p>
-          As universities become increasingly digitized, SmartCampus Hub will continue to serve as the foundational architecture for the campus of tomorrow.
-        </p>
-      </div>
+        <div className="info-grid">
+          <div>
+            <h2>Team contribution model</h2>
+            <p>
+              The system is being developed as a group project with clearly separated module ownership. This helps
+              the team demonstrate individual contribution in the viva while still delivering one shared, coherent
+              product.
+            </p>
+          </div>
+          <div>
+            <h2>Member 4 focus</h2>
+            <p>
+              A key part of this implementation is strengthening the common foundation and highlighting notifications,
+              OAuth-based sign-in, and role-aware behavior across the application so those responsibilities are visible
+              in both the UI and system behavior.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

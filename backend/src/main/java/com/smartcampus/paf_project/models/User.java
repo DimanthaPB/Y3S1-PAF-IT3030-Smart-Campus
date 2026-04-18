@@ -22,7 +22,11 @@ public class User {
 
     private String avatarUrl;
 
-    private String provider; // e.g., "google"
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    private AuthProvider authProvider;
+    
     private String providerId;
 
     @Enumerated(EnumType.STRING)
