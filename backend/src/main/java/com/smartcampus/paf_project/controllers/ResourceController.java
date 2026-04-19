@@ -111,14 +111,22 @@ public class ResourceController {
     }
 
     @PostMapping
-    public ResponseEntity<Resource> createResource(@Valid @RequestBody Resource resource) {
+    public ResponseEntity<Resource> createResource(
+            @Valid @RequestBody Resource resource,
+            Authentication authentication
+    ) {
+        requireAdmin(authentication);
         Resource savedResource = resourceRepository.save(resource);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedResource);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Resource> updateResource(@PathVariable Long id,
-                                                   @Valid @RequestBody Resource updatedResource) {
+    public ResponseEntity<Resource> updateResource(
+            @PathVariable Long id,
+            @Valid @RequestBody Resource updatedResource,
+            Authentication authentication
+    ) {
+        requireAdmin(authentication);
         return resourceRepository.findById(id)
                 .map(resource -> {
                     resource.setName(updatedResource.getName());
@@ -139,7 +147,8 @@ public class ResourceController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteResource(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteResource(@PathVariable Long id, Authentication authentication) {
+        requireAdmin(authentication);
         if (!resourceRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
@@ -152,6 +161,12 @@ public class ResourceController {
         return authentication != null &&
                 authentication.getAuthorities().stream()
                         .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
+    private void requireAdmin(Authentication authentication) {
+        if (!isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access is required");
+        }
     }
 
     private List<Resource> getAccessibleResources(Authentication authentication) {

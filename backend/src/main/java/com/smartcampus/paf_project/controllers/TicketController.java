@@ -1,6 +1,7 @@
 package com.smartcampus.paf_project.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -21,20 +22,20 @@ public class TicketController {
     private TicketService ticketService;
 
     @PostMapping
-    public Ticket createTicket(@Valid @RequestBody TicketCreateRequest request) {
-        return ticketService.createTicket(request);
+    public Ticket createTicket(@Valid @RequestBody TicketCreateRequest request, Authentication authentication) {
+        return ticketService.createTicket(request, authentication.getName());
     }
 
     // GET all tickets
     @GetMapping
-    public List<Ticket> getAllTickets() {
-        return ticketService.getAllTickets();
+    public List<Ticket> getAllTickets(Authentication authentication) {
+        return ticketService.getAllTickets(isAdmin(authentication), authentication.getName());
     }
 
     // GET by ID
     @GetMapping("/{id}")
-    public Ticket getTicketById(@PathVariable Long id) {
-        return ticketService.getTicketById(id);
+    public Ticket getTicketById(@PathVariable Long id, Authentication authentication) {
+        return ticketService.getTicketById(id, isAdmin(authentication), authentication.getName());
     }
 
     
@@ -57,6 +58,12 @@ public Ticket updateTicketStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> payload) {
         return ticketService.updateTicketAssignment(id, payload.get("assignedTo"));
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null &&
+                authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
 }

@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
+import api, { BACKEND_BASE_URL } from "../../utils/api";
 import "../../styles/TicketManagement.css";
 
 function AttachmentList({
@@ -13,8 +13,8 @@ function AttachmentList({
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    axios
-      .get(`http://localhost:8080/api/attachments/ticket/${ticketId}`)
+    api
+      .get(`/attachments/ticket/${ticketId}`)
       .then((res) => {
         setAttachments(res.data || []);
       })
@@ -28,11 +28,11 @@ function AttachmentList({
   }, [attachments.length, onCountChange]);
 
   const handleDelete = (attachmentId, filePath) => {
-    const imageUrl = `http://localhost:8080/${filePath}`;
+    const imageUrl = `${BACKEND_BASE_URL}/${filePath}`;
     setDeletingId(attachmentId);
 
-    axios
-      .delete(`http://localhost:8080/api/attachments/${attachmentId}`)
+    api
+      .delete(`/attachments/${attachmentId}`)
       .then(() => {
         setAttachments((current) =>
           current.filter((att) => att.id !== attachmentId)
@@ -62,11 +62,11 @@ function AttachmentList({
           {attachments.map((att) => (
             <div key={att.id} className="attachment-item">
               <img
-                src={`http://localhost:8080/${att.filePath}`}
+                src={`${BACKEND_BASE_URL}/${att.filePath}`}
                 alt={att.fileName}
                 className="attachment-image"
                 onClick={() =>
-                  setSelectedImage(`http://localhost:8080/${att.filePath}`)
+                  setSelectedImage(`${BACKEND_BASE_URL}/${att.filePath}`)
                 }
               />
 

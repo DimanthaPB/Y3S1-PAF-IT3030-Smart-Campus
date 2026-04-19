@@ -10,13 +10,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -94,5 +98,64 @@ class ResourceControllerTest {
         );
 
         assertEquals(404, response.getStatusCode().value());
+    }
+
+    @Test
+    void regularUsersCannotCreateResources() {
+        Resource resource = new Resource();
+        resource.setName("New Lab");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                resourceController.createResource(
+                        resource,
+                        new UsernamePasswordAuthenticationToken(
+                                "user@example.com",
+                                "token",
+                                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                        )
+                )
+        );
+
+        assertEquals(403, exception.getStatusCode().value());
+        assertTrue(exception.getReason().contains("Admin access"));
+        verify(resourceRepository, never()).save(resource);
+    }
+
+    @Test
+    void regularUsersCannotUpdateResources() {
+        Resource updatedResource = new Resource();
+        updatedResource.setName("Updated Lab");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                resourceController.updateResource(
+                        1L,
+                        updatedResource,
+                        new UsernamePasswordAuthenticationToken(
+                                "user@example.com",
+                                "token",
+                                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                        )
+                )
+        );
+
+        assertEquals(403, exception.getStatusCode().value());
+        verify(resourceRepository, never()).findById(1L);
+    }
+
+    @Test
+    void regularUsersCannotDeleteResources() {
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                resourceController.deleteResource(
+                        1L,
+                        new UsernamePasswordAuthenticationToken(
+                                "user@example.com",
+                                "token",
+                                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                        )
+                )
+        );
+
+        assertEquals(403, exception.getStatusCode().value());
+        verify(resourceRepository, never()).existsById(1L);
     }
 }

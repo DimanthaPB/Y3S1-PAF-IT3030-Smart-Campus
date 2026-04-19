@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
 import TicketCard from "./TicketCard";
+import { getCurrentUserEmail } from "../../utils/auth";
+import api from "../../utils/api";
 import "../../styles/TicketManagement.css";
 
 const sortTickets = (ticketList = []) =>
@@ -18,11 +19,19 @@ const sortTickets = (ticketList = []) =>
 function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
   const [tickets, setTickets] = useState([]);
   const [resourcesById, setResourcesById] = useState({});
-  const currentUser = "Admin";
+  const currentUser = getCurrentUserEmail();
+  const openCount = tickets.filter((ticket) => ticket.status === "OPEN").length;
+  const inProgressCount = tickets.filter((ticket) => ticket.status === "IN_PROGRESS").length;
+  const actionedCount = tickets.filter(
+    (ticket) =>
+      ticket.status === "RESOLVED" ||
+      ticket.status === "CLOSED" ||
+      ticket.status === "REJECTED"
+  ).length;
 
   const fetchTickets = () => {
-    axios
-      .get("http://localhost:8080/api/tickets")
+    api
+      .get("/tickets")
       .then((res) => {
         setTickets(sortTickets(res.data || []));
       })
@@ -36,8 +45,8 @@ function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
   }, [refreshKey]);
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/api/resources")
+    api
+      .get("/resources")
       .then((res) => {
         const resourceMap = (res.data || []).reduce((acc, resource) => {
           acc[String(resource.id)] = resource.name;
@@ -66,6 +75,38 @@ function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
 
   return (
     <div className="ticket-page">
+      <section className="ticket-hero">
+        <p className="ticket-eyebrow">Admin Ticket Console</p>
+        <h1 className="ticket-page-title">Manage Incident Tickets</h1>
+        <p className="ticket-page-subtitle">
+          Review every submitted incident, update ticket status, and keep the support
+          workflow moving with clearer visibility across the backlog.
+        </p>
+      </section>
+
+      <section className="ticket-stats-grid">
+        <article className="ticket-stat-card ticket-stat-card-primary">
+          <p className="ticket-stat-label">Total Tickets</p>
+          <h2 className="ticket-stat-value">{tickets.length}</h2>
+          <p className="ticket-stat-meta">All incidents currently available to admin review.</p>
+        </article>
+        <article className="ticket-stat-card ticket-stat-card-open">
+          <p className="ticket-stat-label">Open</p>
+          <h2 className="ticket-stat-value">{openCount}</h2>
+          <p className="ticket-stat-meta">Fresh tickets that still need action.</p>
+        </article>
+        <article className="ticket-stat-card ticket-stat-card-progress">
+          <p className="ticket-stat-label">In Progress</p>
+          <h2 className="ticket-stat-value">{inProgressCount}</h2>
+          <p className="ticket-stat-meta">Issues actively being investigated or resolved.</p>
+        </article>
+        <article className="ticket-stat-card ticket-stat-card-closed">
+          <p className="ticket-stat-label">Actioned</p>
+          <h2 className="ticket-stat-value">{actionedCount}</h2>
+          <p className="ticket-stat-meta">Resolved, closed, or rejected tickets.</p>
+        </article>
+      </section>
+
       <section className="ticket-section">
         <h2 className="ticket-section-title">Ticket Management</h2>
         {tickets.length === 0 ? (
@@ -79,7 +120,6 @@ function TechTicketList({ refreshKey = 0, onTicketRefresh }) {
                 canUploadAttachments={false}
                 canDeleteAttachments={false}
                 canEditStatus
-                canAssignTechnician
                 canSetRejected
                 onTicketUpdated={handleTicketUpdated}
                 onStatusChanged={handleStatusUpdated}

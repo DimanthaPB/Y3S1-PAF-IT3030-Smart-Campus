@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import "../../styles/TicketManagement.css";
 
 const initialForm = {
@@ -23,8 +23,8 @@ function TicketForm({ onTicketCreated }) {
   const [contactError, setContactError] = useState("");
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/api/resources")
+    api
+      .get("/resources")
       .then((res) => {
         setResources(res.data || []);
       })
@@ -89,26 +89,25 @@ function TicketForm({ onTicketCreated }) {
     );
   };
 
+  const isValidContactDetails = (value) => {
+    const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    const phonePattern = /^[0-9]{10}$/;
+    return emailPattern.test(value) || phonePattern.test(value);
+  };
 
-const isValidContactDetails = (value) => {
-  const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  const phonePattern = /^[0-9]{10}$/; 
-  return emailPattern.test(value) || phonePattern.test(value);
-};
+  const validateContact = (value) => {
+    const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    const phonePattern = /^[0-9]{10}$/;
+    if (!value.trim()) {
+      return "Preferred contact is required";
+    }
 
-const validateContact = (value) => {
-  const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  const phonePattern = /^[0-9]{10}$/; 
-  if (!value.trim()) {
-    return "Preferred contact is required";
-  }
+    if (!emailPattern.test(value) && !phonePattern.test(value)) {
+      return "Enter a valid email or a 10-digit phone number";
+    }
 
-  if (!emailPattern.test(value) && !phonePattern.test(value)) {
-    return "Enter a valid email or a 10-digit phone number";
-  }
-
-  return "";
-};
+    return "";
+  };
 
   const extractApiErrorMessage = (error, fallbackMessage) => {
     const data = error?.response?.data;
@@ -127,26 +126,24 @@ const validateContact = (value) => {
   };
 
   const handleFileSelection = (e) => {
-  const files = Array.from(e.target.files || []);
-  setSubmitError("");
+    const files = Array.from(e.target.files || []);
+    setSubmitError("");
 
-  if (files.length === 0) return;
+    if (files.length === 0) return;
 
-  if (selectedFiles.length + files.length > 3) {
-    setFileError("You can only upload up to 3 images per ticket");
-    return;
-  }
+    if (selectedFiles.length + files.length > 3) {
+      setFileError("You can only upload up to 3 images per ticket");
+      return;
+    }
 
-  if (files.some((file) => !isAllowedImage(file))) {
-    setFileError("Invalid file type");
-    return;
-  }
+    if (files.some((file) => !isAllowedImage(file))) {
+      setFileError("Invalid file type");
+      return;
+    }
 
-  setFileError("");
-
-  setSelectedFiles((prev) => [...prev, ...files]);
-
-};
+    setFileError("");
+    setSelectedFiles((prev) => [...prev, ...files]);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -213,7 +210,7 @@ const validateContact = (value) => {
         contactDetails: normalizedContactDetails
       };
 
-      const res = await axios.post("http://localhost:8080/api/tickets", payload);
+      const res = await api.post("/tickets", payload);
       const createdTicket = res.data;
 
       if (selectedFiles.length > 0 && createdTicket?.id) {
@@ -221,8 +218,8 @@ const validateContact = (value) => {
           selectedFiles.map((file) => {
             const formDataForUpload = new FormData();
             formDataForUpload.append("file", file);
-            return axios.post(
-              `http://localhost:8080/api/attachments/upload/${createdTicket.id}`,
+            return api.post(
+              `/attachments/upload/${createdTicket.id}`,
               formDataForUpload
             );
           })
@@ -389,31 +386,28 @@ const validateContact = (value) => {
           <div className="ticket-file-preview-grid">
             {filePreviews.map((previewUrl, index) => (
               <div key={`${previewUrl}-${index}`} className="attachment-preview-wrapper">
+                <img
+                  src={previewUrl}
+                  alt={`Attachment preview ${index + 1}`}
+                  className="ticket-file-preview-image"
+                />
 
-              <img
-                src={previewUrl}
-                alt={`Attachment preview ${index + 1}`}
-                className="ticket-file-preview-image"
-              />
-
-              <button
-                type="button"
-                className="attachment-remove-btn"
-                onClick={() => {
-                  setSelectedFiles((prev) =>
-                    prev.filter((_, i) => i !== index)
-                  );
-                  setFileError(""); 
-                }}
-              >
-                ×
-              </button>
-
-      </div>
-    ))}
-  </div>
-)}
-
+                <button
+                  type="button"
+                  className="attachment-remove-btn"
+                  onClick={() => {
+                    setSelectedFiles((prev) =>
+                      prev.filter((_, i) => i !== index)
+                    );
+                    setFileError("");
+                  }}
+                >
+                  x
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="ticket-form-row">

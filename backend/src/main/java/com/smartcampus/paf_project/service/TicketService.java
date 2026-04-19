@@ -15,6 +15,7 @@ import java.util.Optional;
 import com.smartcampus.paf_project.dto.TicketCreateRequest;
 import com.smartcampus.paf_project.models.Ticket;
 import com.smartcampus.paf_project.repositories.TicketRepository;
+import com.smartcampus.paf_project.repositories.UserRepository;
 
 @Service
 public class TicketService {
@@ -29,6 +30,9 @@ public class TicketService {
     @Autowired
     private TicketRepository ticketRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public Optional<Ticket> findById(Long id) {
         return ticketRepository.findById(id);
     }
@@ -38,7 +42,7 @@ public class TicketService {
         return ticketRepository.save(ticket);
     }
 
-    public Ticket createTicket(TicketCreateRequest request) {
+    public Ticket createTicket(TicketCreateRequest request, String currentUserEmail) {
         String normalizedPriority = normalizeRequired(request.getPriority(), "Priority is required").toUpperCase();
         if (!ALLOWED_PRIORITIES.contains(normalizedPriority)) {
             throw new IllegalArgumentException("Invalid priority value");
@@ -57,20 +61,31 @@ public class TicketService {
         ticket.setPriority(normalizedPriority);
         ticket.setContactDetails(normalizedContact);
         ticket.setStatus("OPEN");
+        ticket.setCreatedBy(resolveCurrentUserId(currentUserEmail));
         ticket.setCreatedAt(LocalDateTime.now());
         ticket.setUpdatedAt(LocalDateTime.now());
         return ticketRepository.save(ticket);
     }
 
-    public List<Ticket> getAllTickets() {
-        return ticketRepository.findAll(
-        Sort.by(Sort.Direction.DESC, "id")
-        );
+    public List<Ticket> getAllTickets(boolean isAdmin, String currentUserEmail) {
+        if (isAdmin) {
+            return ticketRepository.findAll(
+                    Sort.by(Sort.Direction.DESC, "id")
+            );
+        }
+
+        return ticketRepository.findByCreatedByOrderByIdDesc(resolveCurrentUserId(currentUserEmail));
     }
 
-    public Ticket getTicketById(Long id) {
-        return ticketRepository.findById(id)
+    public Ticket getTicketById(Long id, boolean isAdmin, String currentUserEmail) {
+        Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (!isAdmin && !resolveCurrentUserId(currentUserEmail).equals(ticket.getCreatedBy())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only view your own tickets");
+        }
+
+        return ticket;
     }
 
     public Ticket updateTicketStatus(Long id, String status, String resolutionNotes) {
@@ -129,5 +144,12 @@ public class TicketService {
     private boolean isValidContactDetails(String contactDetails) {
         return EMAIL_PATTERN.matcher(contactDetails).matches()
                 || PHONE_PATTERN.matcher(contactDetails).matches();
+    }
+
+    private Long resolveCurrentUserId(String currentUserEmail) {
+        String normalizedEmail = normalizeRequired(currentUserEmail, "Authenticated user is required");
+        return userRepository.findByEmail(normalizedEmail)
+                .map(user -> user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user not found"));
     }
 }

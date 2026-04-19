@@ -22,20 +22,19 @@ import { getStoredToken } from './utils/api';
 
 import './styles/design-system.css';
 
-function RoleRoute({ children, adminOnly = false, userOnly = false }) {
+function RoleRoute({ children, allowedRoles = [] }) {
   const token = getStoredToken();
-  const isAdmin = getCurrentUserRole() === 'ADMIN';
+  const currentRole = getCurrentUserRole();
 
   if (!token) {
     return <Navigate to="/" replace />;
   }
 
-  if (adminOnly && !isAdmin) {
+  if (allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
+    if (currentRole === 'ADMIN') {
+      return <Navigate to="/admin/bookings" replace />;
+    }
     return <Navigate to="/bookings" replace />;
-  }
-
-  if (userOnly && isAdmin) {
-    return <Navigate to="/admin/bookings" replace />;
   }
 
   return children;
@@ -57,12 +56,11 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-            <Route path="/preferences" element={<Preferences />} />
 
             <Route
               path="/bookings"
               element={(
-                <RoleRoute userOnly>
+                <RoleRoute allowedRoles={['USER']}>
                   <Bookings />
                 </RoleRoute>
               )}
@@ -70,7 +68,7 @@ function App() {
             <Route
               path="/admin/bookings"
               element={(
-                <RoleRoute adminOnly>
+                <RoleRoute allowedRoles={['ADMIN']}>
                   <AdminBookings />
                 </RoleRoute>
               )}
@@ -78,7 +76,7 @@ function App() {
             <Route
               path="/catalogue"
               element={(
-                <RoleRoute userOnly>
+                <RoleRoute allowedRoles={['USER']}>
                   <UserResources />
                 </RoleRoute>
               )}
@@ -86,19 +84,36 @@ function App() {
             <Route
               path="/resources"
               element={(
-                <RoleRoute adminOnly>
+                <RoleRoute allowedRoles={['ADMIN']}>
                   <Resources />
                 </RoleRoute>
               )}
             />
-            <Route path="/tickets" element={<TicketList refreshKey={ticketRefreshKey} />} />
+            <Route
+              path="/preferences"
+              element={(
+                <RoleRoute allowedRoles={['USER', 'ADMIN', 'MANAGER']}>
+                  <Preferences />
+                </RoleRoute>
+              )}
+            />
+            <Route
+              path="/tickets"
+              element={(
+                <RoleRoute allowedRoles={['USER']}>
+                  <TicketList refreshKey={ticketRefreshKey} />
+                </RoleRoute>
+              )}
+            />
             <Route
               path="/tech/tickets"
               element={(
-                <TechTicketList
-                  refreshKey={ticketRefreshKey}
-                  onTicketRefresh={triggerTicketRefresh}
-                />
+                <RoleRoute allowedRoles={['ADMIN']}>
+                  <TechTicketList
+                    refreshKey={ticketRefreshKey}
+                    onTicketRefresh={triggerTicketRefresh}
+                  />
+                </RoleRoute>
               )}
             />
 

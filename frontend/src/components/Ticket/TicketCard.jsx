@@ -1,11 +1,10 @@
-﻿import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
 import AttachmentList from "../Attachment/AttachmentList";
 import CommentSection from "../Comment/CommentSection";
+import api from "../../utils/api";
 import "../../styles/TicketManagement.css";
 
 const STATUS_OPTIONS = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"];
-const TECHNICIAN_OPTIONS = ["", "Tech1", "Tech2", "Tech3"];
 const STATUS_BADGE_CLASS = {
   OPEN: "ticket-badge ticket-badge-status-open",
   IN_PROGRESS: "ticket-badge ticket-badge-status-in-progress",
@@ -24,7 +23,6 @@ function TicketCard({
   canUploadAttachments = true,
   canDeleteAttachments = true,
   canEditStatus = false,
-  canAssignTechnician = false,
   canSetRejected = false,
   onTicketUpdated,
   onStatusChanged,
@@ -38,8 +36,6 @@ function TicketCard({
   const [statusValue, setStatusValue] = useState(ticket.status || "OPEN");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusUpdateError, setStatusUpdateError] = useState("");
-  const [assignedToValue, setAssignedToValue] = useState(ticket.assignedTo || "");
-  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
   const [resolutionNotesValue, setResolutionNotesValue] = useState(
     ticket.resolutionNotes || ""
   );
@@ -47,10 +43,6 @@ function TicketCard({
   useEffect(() => {
     setStatusValue(ticket.status || "OPEN");
   }, [ticket.status]);
-
-  useEffect(() => {
-    setAssignedToValue(ticket.assignedTo || "");
-  }, [ticket.assignedTo]);
 
   useEffect(() => {
     setResolutionNotesValue(ticket.resolutionNotes || "");
@@ -133,8 +125,8 @@ function TicketCard({
 
     setUploadError("");
 
-    axios
-      .get(`http://localhost:8080/api/attachments/ticket/${ticket.id}`)
+    api
+      .get(`/attachments/ticket/${ticket.id}`)
       .then((countRes) => {
         const currentCount = (countRes.data || []).length;
         if (currentCount + selectedFiles.length > 3) {
@@ -145,8 +137,8 @@ function TicketCard({
         const uploadRequests = selectedFiles.map((file) => {
           const formData = new FormData();
           formData.append("file", file);
-          return axios.post(
-            `http://localhost:8080/api/attachments/upload/${ticket.id}`,
+          return api.post(
+            `/attachments/upload/${ticket.id}`,
             formData
           );
         });
@@ -168,12 +160,14 @@ function TicketCard({
       });
   };
 
-  /*const handleStatusChange = async (e) => {
+  const handleStatusChange = async (e) => {
     const newStatus = e.target.value;
+    const latestNotes =
+      document.getElementById(`resolution-notes-${ticket.id}`)?.value || "";
 
     if (
       (newStatus === "RESOLVED" || newStatus === "CLOSED") &&
-      !resolutionNotesValue.trim()
+      !latestNotes.trim()
     ) {
       setStatusUpdateError(
         "Resolution notes are required when status is set to RESOLVED or CLOSED"
@@ -186,9 +180,12 @@ function TicketCard({
     setStatusUpdateError("");
 
     try {
-      const res = await axios.put(
-        `http://localhost:8080/api/tickets/${ticket.id}/status`,
-        { status: newStatus, resolutionNotes: resolutionNotesValue.trim() || null }
+      const res = await api.put(
+        `/tickets/${ticket.id}/status`,
+        {
+          status: newStatus,
+          resolutionNotes: latestNotes.trim() || null
+        }
       );
 
       if (onTicketUpdated) {
@@ -199,84 +196,12 @@ function TicketCard({
       }
     } catch (err) {
       console.error("Status update error:", err);
-      setStatusUpdateError(extractApiErrorMessage(err, "Failed to update status"));
+      setStatusUpdateError(
+        extractApiErrorMessage(err, "Failed to update status")
+      );
       setStatusValue(ticket.status || "OPEN");
     } finally {
       setIsUpdatingStatus(false);
-    }
-  };*/
-
-
-  const handleStatusChange = async (e) => {
-  const newStatus = e.target.value;
-
-  // 🔥 GET LATEST VALUE DIRECTLY FROM TEXTAREA
-  const latestNotes =
-    document.getElementById(`resolution-notes-${ticket.id}`)?.value || "";
-
-  if (
-    (newStatus === "RESOLVED" || newStatus === "CLOSED") &&
-    !latestNotes.trim()
-  ) {
-    setStatusUpdateError(
-      "Resolution notes are required when status is set to RESOLVED or CLOSED"
-    );
-    return;
-  }
-
-  setStatusValue(newStatus);
-  setIsUpdatingStatus(true);
-  setStatusUpdateError("");
-
-  try {
-    const res = await axios.put(
-      `http://localhost:8080/api/tickets/${ticket.id}/status`,
-      {
-        status: newStatus,
-        resolutionNotes: latestNotes.trim() || null
-      }
-    );
-
-    if (onTicketUpdated) {
-      onTicketUpdated(res.data);
-    }
-    if (onStatusChanged) {
-      onStatusChanged();
-    }
-  } catch (err) {
-    console.error("Status update error:", err);
-    setStatusUpdateError(
-      extractApiErrorMessage(err, "Failed to update status")
-    );
-    setStatusValue(ticket.status || "OPEN");
-  } finally {
-    setIsUpdatingStatus(false);
-  }
-};
-
-  const handleAssignmentChange = async (e) => {
-    const newAssignedTo = e.target.value;
-    setAssignedToValue(newAssignedTo);
-    setIsUpdatingAssignment(true);
-
-    try {
-      const res = await axios.put(
-        `http://localhost:8080/api/tickets/${ticket.id}/assignment`,
-        { assignedTo: newAssignedTo }
-      );
-
-      if (onTicketUpdated) {
-        onTicketUpdated(res.data);
-      }
-      if (onStatusChanged) {
-        onStatusChanged();
-      }
-    } catch (err) {
-      console.error("Assignment update error:", err);
-      alert("Failed to update technician assignment");
-      setAssignedToValue(ticket.assignedTo || "");
-    } finally {
-      setIsUpdatingAssignment(false);
     }
   };
 
@@ -302,7 +227,7 @@ function TicketCard({
           </span>
         </p>
         <p className="ticket-meta-item">
-          <strong>Assigned To:</strong> {ticket.assignedTo || "Unassigned"}
+          <strong>Assigned To:</strong> {ticket.assignedTo || "Admin"}
         </p>
         <p className="ticket-meta-item">
           <strong>Resource:</strong> {selectedResourceName}
@@ -312,17 +237,11 @@ function TicketCard({
         </p>
       </div>
 
-      {/*{ticket.resolutionNotes && (
+      {ticket.resolutionNotes && !canEditStatus && (
         <p className="ticket-meta-item">
           <strong>Resolution Notes:</strong> {ticket.resolutionNotes}
         </p>
-      )}*/}
-
-      {ticket.resolutionNotes && !canEditStatus && (
-  <p className="ticket-meta-item">
-    <strong>Resolution Notes:</strong> {ticket.resolutionNotes}
-  </p>
-)}
+      )}
 
       {canEditStatus && (
         <div className="ticket-status-row">
@@ -332,7 +251,6 @@ function TicketCard({
           <select
             value={statusValue}
             onChange={handleStatusChange}
-            //onChange={(e) => setStatusValue(e.target.value)}
             disabled={isUpdatingStatus}
             className="status-select"
           >
@@ -374,27 +292,6 @@ function TicketCard({
           {statusUpdateError && (
             <p className="attachment-error-text">{statusUpdateError}</p>
           )}
-        </div>
-      )}
-
-      {canAssignTechnician && (
-        <div className="ticket-status-row">
-          <label>
-            <strong>Assign Technician:</strong>
-          </label>
-          <select
-            value={assignedToValue}
-            onChange={handleAssignmentChange}
-            disabled={isUpdatingAssignment}
-            className="status-select"
-          >
-            <option value="">Unassigned</option>
-            {TECHNICIAN_OPTIONS.filter(Boolean).map((technician) => (
-              <option key={technician} value={technician}>
-                {technician}
-              </option>
-            ))}
-          </select>
         </div>
       )}
 

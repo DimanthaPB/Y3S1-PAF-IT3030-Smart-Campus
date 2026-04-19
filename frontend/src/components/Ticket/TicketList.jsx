@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
 import TicketCard from "./TicketCard";
 import TicketForm from "./TicketForm";
+import { getCurrentUserEmail } from "../../utils/auth";
+import api from "../../utils/api";
 import "../../styles/TicketManagement.css";
 
 const sortTickets = (ticketList = []) =>
@@ -19,10 +20,15 @@ const sortTickets = (ticketList = []) =>
 function TicketList({ refreshKey = 0 }) {
   const [tickets, setTickets] = useState([]);
   const [resourcesById, setResourcesById] = useState({});
+  const openCount = tickets.filter((ticket) => ticket.status === "OPEN").length;
+  const inProgressCount = tickets.filter((ticket) => ticket.status === "IN_PROGRESS").length;
+  const closedCount = tickets.filter(
+    (ticket) => ticket.status === "RESOLVED" || ticket.status === "CLOSED"
+  ).length;
 
   const fetchTickets = () => {
-    axios
-      .get("http://localhost:8080/api/tickets")
+    api
+      .get("/tickets")
       .then((res) => {
         setTickets(sortTickets(res.data || []));
       })
@@ -36,8 +42,8 @@ function TicketList({ refreshKey = 0 }) {
   }, [refreshKey]);
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/api/resources")
+    api
+      .get("/resources")
       .then((res) => {
         const resourceMap = (res.data || []).reduce((acc, resource) => {
           acc[String(resource.id)] = resource.name;
@@ -56,7 +62,38 @@ function TicketList({ refreshKey = 0 }) {
 
   return (
     <div className="ticket-page">
-      <h1 className="ticket-page-title">Support Desk</h1>
+      <section className="ticket-hero">
+        <p className="ticket-eyebrow">Incident Support Desk</p>
+        <h1 className="ticket-page-title">My Tickets</h1>
+        <p className="ticket-page-subtitle">
+          Report issues, attach evidence, and track progress from open incidents to
+          final resolution in one workspace.
+        </p>
+      </section>
+
+      <section className="ticket-stats-grid">
+        <article className="ticket-stat-card ticket-stat-card-primary">
+          <p className="ticket-stat-label">Total Tickets</p>
+          <h2 className="ticket-stat-value">{tickets.length}</h2>
+          <p className="ticket-stat-meta">All incidents you have submitted to the platform.</p>
+        </article>
+        <article className="ticket-stat-card ticket-stat-card-open">
+          <p className="ticket-stat-label">Open</p>
+          <h2 className="ticket-stat-value">{openCount}</h2>
+          <p className="ticket-stat-meta">New issues waiting for progress updates.</p>
+        </article>
+        <article className="ticket-stat-card ticket-stat-card-progress">
+          <p className="ticket-stat-label">In Progress</p>
+          <h2 className="ticket-stat-value">{inProgressCount}</h2>
+          <p className="ticket-stat-meta">Tickets currently being worked on by the admin team.</p>
+        </article>
+        <article className="ticket-stat-card ticket-stat-card-closed">
+          <p className="ticket-stat-label">Resolved / Closed</p>
+          <h2 className="ticket-stat-value">{closedCount}</h2>
+          <p className="ticket-stat-meta">Incidents that already reached a final outcome.</p>
+        </article>
+      </section>
+
       <TicketForm onTicketCreated={handleTicketCreated} />
 
       <section className="ticket-section">
@@ -69,7 +106,7 @@ function TicketList({ refreshKey = 0 }) {
               <TicketCard
                 key={ticket.id}
                 ticket={ticket}
-                currentUser="User1"
+                currentUser={getCurrentUserEmail()}
                 resourcesById={resourcesById}
               />
             ))}

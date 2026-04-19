@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 
 function CommentSection({ ticketId, currentUser = "User1" }) {
   const [comments, setComments] = useState([]);
@@ -8,8 +8,8 @@ function CommentSection({ ticketId, currentUser = "User1" }) {
   const [editingText, setEditingText] = useState("");
 
   const fetchComments = useCallback(() => {
-    axios
-      .get(`http://localhost:8080/api/tickets/${ticketId}/comments`)
+    api
+      .get(`/tickets/${ticketId}/comments`)
       .then((res) => {
         setComments(res.data || []);
       })
@@ -28,8 +28,8 @@ function CommentSection({ ticketId, currentUser = "User1" }) {
     }
 
     try {
-      const res = await axios.post(
-        `http://localhost:8080/api/tickets/${ticketId}/comments`,
+      const res = await api.post(
+        `/tickets/${ticketId}/comments`,
         {
           text: newCommentText.trim(),
           createdBy: currentUser
@@ -59,8 +59,8 @@ function CommentSection({ ticketId, currentUser = "User1" }) {
     }
 
     try {
-      const res = await axios.put(
-        `http://localhost:8080/api/tickets/${ticketId}/comments/${commentId}`,
+      const res = await api.put(
+        `/tickets/${ticketId}/comments/${commentId}`,
         {
           text: editingText.trim(),
           actingUser: currentUser
@@ -79,8 +79,8 @@ function CommentSection({ ticketId, currentUser = "User1" }) {
 
   const handleDelete = async (commentId) => {
     try {
-      await axios.delete(
-        `http://localhost:8080/api/tickets/${ticketId}/comments/${commentId}`,
+      await api.delete(
+        `/tickets/${ticketId}/comments/${commentId}`,
         {
           params: { actingUser: currentUser }
         }

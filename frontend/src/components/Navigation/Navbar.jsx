@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, Info, LogOut, Menu, User, X } from 'lucide-react';
 import NotificationModal from '../Notification/NotificationModal';
-import { isAdminUser } from '../../utils/auth';
+import { getCurrentUserRole } from '../../utils/auth';
 import { clearStoredToken, getStoredToken } from '../../utils/api';
 import './Navbar.css';
 
@@ -18,7 +18,9 @@ const Navbar = () => {
   const location = useLocation();
 
   const isAuthenticated = !!getStoredToken();
-  const isAdmin = isAuthenticated && isAdminUser();
+  const currentRole = isAuthenticated ? getCurrentUserRole() : '';
+  const isAdmin = currentRole === 'ADMIN';
+  const isStandardUser = currentRole === 'USER';
 
   const navigationLinks = useMemo(() => {
     const links = [...publicLinks];
@@ -27,14 +29,16 @@ const Navbar = () => {
       if (isAdmin) {
         links.push({ to: '/admin/bookings', label: 'Admin Bookings' });
         links.push({ to: '/resources', label: 'Resources' });
-      } else {
+        links.push({ to: '/tech/tickets', label: 'Admin Tickets' });
+      } else if (isStandardUser) {
         links.push({ to: '/bookings', label: 'My Bookings' });
         links.push({ to: '/catalogue', label: 'Catalogue' });
+        links.push({ to: '/tickets', label: 'Tickets' });
       }
     }
 
     return links;
-  }, [isAdmin, isAuthenticated]);
+  }, [isAdmin, isAuthenticated, isStandardUser]);
 
   const handleLogout = () => {
     clearStoredToken();

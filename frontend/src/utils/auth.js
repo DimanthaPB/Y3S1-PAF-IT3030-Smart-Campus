@@ -1,5 +1,7 @@
+import { getStoredToken } from './api';
+
 export const getAuthTokenPayload = () => {
-  const token = localStorage.getItem('jwt_token');
+  const token = getStoredToken();
   if (!token) return null;
 
   try {
@@ -21,3 +23,5 @@ export const getCurrentUserRole = () => {
 };
 
 export const isAdminUser = () => getCurrentUserRole() === 'ADMIN';
+export const isTechnicianUser = () => getCurrentUserRole() === 'TECHNICIAN';
+export const hasAnyRole = (...roles) => roles.includes(getCurrentUserRole());
