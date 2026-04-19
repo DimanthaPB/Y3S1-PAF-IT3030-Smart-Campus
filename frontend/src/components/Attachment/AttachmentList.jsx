@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import api, { BACKEND_BASE_URL } from "../../utils/api";
 import "../../styles/TicketManagement.css";
 
@@ -59,14 +59,15 @@ function AttachmentList({
         <p className="attachment-empty-text">No attachments</p>
       ) : (
         <div className="attachment-grid">
-          {attachments.map((att) => (
+          {attachments.map((att) =>
+          (
             <div key={att.id} className="attachment-item">
               <img
-                src={`${BACKEND_BASE_URL}/${att.filePath}`}
+                src={`${BACKEND_BASE_URL}/${encodeURI(att.filePath)}`}
                 alt={att.fileName}
                 className="attachment-image"
                 onClick={() =>
-                  setSelectedImage(`${BACKEND_BASE_URL}/${att.filePath}`)
+                  setSelectedImage(`${BACKEND_BASE_URL}/${encodeURI(att.filePath)}`)
                 }
               />
 
@@ -87,7 +88,9 @@ function AttachmentList({
 
       {selectedImage && (
         <div className="modal-backdrop" onClick={() => setSelectedImage(null)}>
-          <div className="modal-content">
+          <div className="modal-content"
+          onClick={(e) => e.stopPropagation()}
+          >
             <span className="modal-close" onClick={() => setSelectedImage(null)}>
               X
             </span>
