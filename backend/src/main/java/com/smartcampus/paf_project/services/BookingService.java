@@ -224,7 +224,6 @@ public class BookingService {
         booking.setCancelledByRole(null);
         booking.setCancelledAt(null);
         booking.setUpdatedAt(LocalDateTime.now());
-        return bookingRepository.save(booking);
         Booking savedBooking = bookingRepository.save(booking);
         notifyBookingEventIfAvailable(
                 savedBooking.getBookedBy(),
@@ -254,7 +253,6 @@ public class BookingService {
         booking.setCancelledByRole(null);
         booking.setCancelledAt(null);
         booking.setUpdatedAt(LocalDateTime.now());
-        return bookingRepository.save(booking);
         Booking savedBooking = bookingRepository.save(booking);
         notifyBookingEventIfAvailable(
                 savedBooking.getBookedBy(),
@@ -281,7 +279,6 @@ public class BookingService {
         booking.setCancelledByRole(isAdmin ? "ADMIN" : "USER");
         booking.setCancelledAt(LocalDateTime.now());
         booking.setUpdatedAt(LocalDateTime.now());
-        return bookingRepository.save(booking);
         Booking savedBooking = bookingRepository.save(booking);
         notifyBookingEventIfAvailable(
                 savedBooking.getBookedBy(),
