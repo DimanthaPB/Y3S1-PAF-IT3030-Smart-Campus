@@ -200,6 +200,62 @@ function IconActionButton({ label, onClick, tone = "neutral", icon }) {
   );
 }
 
+function HealthMetricCard({ icon, label, value, description, tone = "neutral" }) {
+  const toneMap = {
+    success: {
+      border: "1px solid rgba(74, 222, 128, 0.18)",
+      background: "rgba(6, 24, 21, 0.78)",
+      valueColor: "#dcfce7",
+    },
+    warning: {
+      border: "1px solid rgba(250, 204, 21, 0.18)",
+      background: "rgba(38, 24, 8, 0.72)",
+      valueColor: "#fef3c7",
+    },
+    danger: {
+      border: "1px solid rgba(248, 113, 113, 0.18)",
+      background: "rgba(42, 14, 18, 0.74)",
+      valueColor: "#fecaca",
+    },
+    neutral: {
+      border: "1px solid rgba(148, 163, 184, 0.14)",
+      background: "rgba(12, 18, 31, 0.82)",
+      valueColor: "#f8fafc",
+    },
+  };
+
+  const styles = toneMap[tone] || toneMap.neutral;
+
+  return (
+    <div
+      style={{
+        padding: "14px 16px",
+        borderRadius: "18px",
+        border: styles.border,
+        background: styles.background,
+        display: "grid",
+        gap: "8px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          color: "#94a3b8",
+          fontSize: "12px",
+          fontWeight: 600,
+        }}
+      >
+        <span style={{ fontSize: "14px", opacity: 0.9 }}>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <div style={{ fontSize: "28px", fontWeight: 800, color: styles.valueColor }}>{value}</div>
+      <div style={{ fontSize: "12px", color: "#94a3b8", lineHeight: 1.5 }}>{description}</div>
+    </div>
+  );
+}
+
 function ResourceCard({
   resource,
   today,
@@ -408,6 +464,92 @@ function Resources() {
       resource.availableToDate >= today &&
       resource.availableToDate <= nextWeek
   );
+  const resourcesMissingDescription = resources.filter(
+    (resource) => !resource.description || !resource.description.trim()
+  );
+  const resourcesMissingAvailability = resources.filter(
+    (resource) =>
+      !resource.availableFromDate ||
+      !resource.availableToDate ||
+      !resource.availabilityStart ||
+      !resource.availabilityEnd
+  );
+  const healthyResources = resources.filter(
+    (resource) =>
+      resource.status === "ACTIVE" &&
+      (!resource.availableToDate || resource.availableToDate >= today) &&
+      resource.description &&
+      resource.description.trim() &&
+      resource.availableFromDate &&
+      resource.availableToDate &&
+      resource.availabilityStart &&
+      resource.availabilityEnd
+  ).length;
+  const healthScore = resources.length
+    ? Math.round((healthyResources / resources.length) * 100)
+    : 100;
+  const healthAttentionItems = resources
+    .map((resource) => {
+      const isExpired = resource.availableToDate && resource.availableToDate < today;
+      const missingAvailability =
+        !resource.availableFromDate ||
+        !resource.availableToDate ||
+        !resource.availabilityStart ||
+        !resource.availabilityEnd;
+      const missingDescription = !resource.description || !resource.description.trim();
+      const isExpiringSoon =
+        resource.availableToDate &&
+        resource.availableToDate >= today &&
+        resource.availableToDate <= nextWeek;
+
+      if (isExpired) {
+        return {
+          resource,
+          tone: "danger",
+          title: "Date extension required",
+          detail: `Availability ended on ${resource.availableToDate}. Extend this resource to keep it bookable.`,
+          actionLabel: "Extend Dates",
+          action: () => handleExtendAvailability(resource),
+        };
+      }
+
+      if (missingAvailability) {
+        return {
+          resource,
+          tone: "warning",
+          title: "Availability details incomplete",
+          detail: "Complete the date and time window so this resource is ready for scheduling.",
+          actionLabel: "Complete Availability",
+          action: () => handleEdit(resource),
+        };
+      }
+
+      if (missingDescription) {
+        return {
+          resource,
+          tone: "neutral",
+          title: "Description missing",
+          detail: "Add a short description so admins can identify and compare this resource faster.",
+          actionLabel: "Add Details",
+          action: () => handleEdit(resource),
+        };
+      }
+
+      if (isExpiringSoon) {
+        return {
+          resource,
+          tone: "warning",
+          title: "Expiry review recommended",
+          detail: `Availability ends on ${resource.availableToDate}. Review it now if this resource should remain active.`,
+          actionLabel: "Review Dates",
+          action: () => handleEdit(resource),
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean)
+    .slice(0, 4);
   const statusPriority = {
     ACTIVE: 0,
     OUT_OF_SERVICE: 1,
@@ -996,7 +1138,7 @@ function Resources() {
           </div>
         )}
 
-        {(expiredResources.length > 0 || expiringSoonResources.length > 0) && (
+        {resources.length > 0 && (
           <section
             style={{
               ...cardStyles,
@@ -1005,19 +1147,62 @@ function Resources() {
               gap: "18px",
               border:
                 expiredResources.length > 0
-                  ? "1px solid rgba(248, 113, 113, 0.24)"
-                  : "1px solid rgba(250, 204, 21, 0.22)",
+                  ? "1px solid rgba(248, 113, 113, 0.2)"
+                  : healthAttentionItems.length > 0
+                    ? "1px solid rgba(250, 204, 21, 0.18)"
+                    : "1px solid rgba(74, 222, 128, 0.16)",
             }}
           >
             <SectionTitle
-              eyebrow="Availability Alerts"
+              eyebrow="Resource Health & Expiry Alerts"
               title={
-                expiredResources.length > 0
-                  ? `${expiredResources.length} resources need date extension`
-                  : `${expiringSoonResources.length} resources expire within 7 days`
+                healthAttentionItems.length > 0
+                  ? `${healthAttentionItems.length} resources need admin attention`
+                  : "Catalogue health looks stable"
               }
-              description="Use these reminders to keep the catalogue current before availability windows become outdated."
+              description="This operational health panel highlights expired availability, upcoming expiry, and incomplete resource profiles so you can fix issues before they affect bookings."
             />
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "14px",
+              }}
+            >
+              <HealthMetricCard
+                icon="🛡"
+                label="Health score"
+                value={`${healthScore}%`}
+                description="Resources that are active, current, and fully described."
+                tone={healthScore >= 80 ? "success" : healthScore >= 55 ? "warning" : "danger"}
+              />
+              <HealthMetricCard
+                icon="⚠"
+                label="Expired"
+                value={expiredResources.length}
+                description="Resources whose availability has already ended."
+                tone={expiredResources.length > 0 ? "danger" : "neutral"}
+              />
+              <HealthMetricCard
+                icon="⏳"
+                label="Expiring soon"
+                value={expiringSoonResources.length}
+                description="Resources that end within the next 7 days."
+                tone={expiringSoonResources.length > 0 ? "warning" : "neutral"}
+              />
+              <HealthMetricCard
+                icon="📝"
+                label="Missing details"
+                value={resourcesMissingDescription.length + resourcesMissingAvailability.length}
+                description="Descriptions or availability fields that still need completion."
+                tone={
+                  resourcesMissingDescription.length + resourcesMissingAvailability.length > 0
+                    ? "warning"
+                    : "neutral"
+                }
+              />
+            </div>
 
             <div
               style={{
@@ -1026,62 +1211,73 @@ function Resources() {
                 gap: "14px",
               }}
             >
-              {expiredResources.map((resource) => (
+              {healthAttentionItems.length === 0 && (
                 <div
-                  key={`expired-${resource.id}`}
                   style={{
                     padding: "16px 18px",
                     borderRadius: "20px",
-                    background: "rgba(69, 10, 10, 0.38)",
-                    border: "1px solid rgba(248, 113, 113, 0.2)",
+                    background: "rgba(8, 28, 21, 0.42)",
+                    border: "1px solid rgba(74, 222, 128, 0.18)",
                     display: "grid",
                     gap: "10px",
                   }}
                 >
-                  <div style={{ fontWeight: 700, color: "#f8fafc" }}>{resource.name}</div>
-                  <div style={{ color: "#fecaca", fontSize: "13px", lineHeight: 1.6 }}>
-                    Availability ended on {resource.availableToDate}. Extend the date range to keep this resource bookable.
+                  <div style={{ fontWeight: 700, color: "#f8fafc" }}>No urgent fixes needed</div>
+                  <div style={{ color: "#bbf7d0", fontSize: "13px", lineHeight: 1.6 }}>
+                    Your resource catalogue has no expired records in the current attention queue. Keep reviewing dates and details to maintain this state.
+                  </div>
+                </div>
+              )}
+
+              {healthAttentionItems.map((item) => (
+                <div
+                  key={`${item.resource.id}-${item.title}`}
+                  style={{
+                    padding: "16px 18px",
+                    borderRadius: "20px",
+                    background:
+                      item.tone === "danger"
+                        ? "rgba(69, 10, 10, 0.38)"
+                        : item.tone === "warning"
+                          ? "rgba(120, 53, 15, 0.2)"
+                          : "rgba(15, 23, 42, 0.75)",
+                    border:
+                      item.tone === "danger"
+                        ? "1px solid rgba(248, 113, 113, 0.2)"
+                        : item.tone === "warning"
+                          ? "1px solid rgba(250, 204, 21, 0.2)"
+                          : "1px solid rgba(148, 163, 184, 0.16)",
+                    display: "grid",
+                    gap: "10px",
+                  }}
+                >
+                  <div style={{ display: "grid", gap: "4px" }}>
+                    <div style={{ fontWeight: 700, color: "#f8fafc" }}>{item.resource.name}</div>
+                    <div style={{ color: "#cbd5e1", fontSize: "13px", fontWeight: 600 }}>
+                      {item.title}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      color:
+                        item.tone === "danger"
+                          ? "#fecaca"
+                          : item.tone === "warning"
+                            ? "#fde68a"
+                            : "#cbd5e1",
+                      fontSize: "13px",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {item.detail}
                   </div>
                   <div>
-                    <button
-                      type="button"
-                      onClick={() => handleExtendAvailability(resource)}
-                      style={secondaryButtonStyles}
-                    >
-                      Extend Availability
+                    <button type="button" onClick={item.action} style={secondaryButtonStyles}>
+                      {item.actionLabel}
                     </button>
                   </div>
                 </div>
               ))}
-
-              {expiredResources.length === 0 &&
-                expiringSoonResources.map((resource) => (
-                  <div
-                    key={`expiring-${resource.id}`}
-                    style={{
-                      padding: "16px 18px",
-                      borderRadius: "20px",
-                      background: "rgba(120, 53, 15, 0.2)",
-                      border: "1px solid rgba(250, 204, 21, 0.2)",
-                      display: "grid",
-                      gap: "10px",
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, color: "#f8fafc" }}>{resource.name}</div>
-                    <div style={{ color: "#fde68a", fontSize: "13px", lineHeight: 1.6 }}>
-                      Availability ends on {resource.availableToDate}. Review it now if you plan to keep this resource active.
-                    </div>
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(resource)}
-                        style={secondaryButtonStyles}
-                      >
-                        Review Dates
-                      </button>
-                    </div>
-                  </div>
-                ))}
             </div>
           </section>
         )}
