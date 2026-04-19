@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BellOff, Check, Settings2, Trash2, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCurrentUserRole } from '../../utils/auth';
 import './NotificationModal.css';
 
 const defaultPrefs = {
@@ -27,26 +29,35 @@ const preferenceItems = [
   },
 ];
 
-const NotificationModal = ({ onClose, setUnreadCount }) => {
+const NotificationModal = ({
+  notifications: initialNotifications = [],
+  onClose,
+  refreshNotifications,
+  setNotifications: setParentNotifications,
+  setUnreadCount,
+}) => {
   const [activeTab, setActiveTab] = useState('notifications');
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState(initialNotifications);
   const [prefs, setPrefs] = useState(defaultPrefs);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialNotifications.length === 0);
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const navigate = useNavigate();
+  const currentRole = getCurrentUserRole();
 
   const fetchNotifications = useCallback(async () => {
     try {
       const { data } = await api.get('/users/me/notifications');
       setNotifications(data);
+      setParentNotifications(data);
       setUnreadCount(data.filter((n) => !n.read).length);
     } catch (error) {
       console.error('Failed to fetch notifications', error);
     } finally {
       setLoading(false);
     }
-  }, [setUnreadCount]);
+  }, [setParentNotifications, setUnreadCount]);
 
   const fetchPrefs = useCallback(async () => {
     try {
@@ -64,30 +75,38 @@ const NotificationModal = ({ onClose, setUnreadCount }) => {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
+    if (initialNotifications.length > 0) {
+      setNotifications(initialNotifications);
+      setLoading(false);
+    } else {
+      fetchNotifications();
+    }
+
     fetchPrefs();
-  }, [fetchNotifications, fetchPrefs]);
+  }, [fetchNotifications, fetchPrefs, initialNotifications]);
 
   const markAsRead = async (id) => {
     try {
       await api.put(`/users/me/notifications/${id}/read`);
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      const nextNotifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+      setNotifications(nextNotifications);
+      setParentNotifications(nextNotifications);
+      setUnreadCount(nextNotifications.filter((n) => !n.read).length);
+      return nextNotifications;
     } catch (error) {
       console.error('Failed to mark read', error);
+      return null;
     }
   };
 
   const deleteNotification = async (id) => {
     try {
       await api.delete(`/users/me/notifications/${id}`);
-      setNotifications((prev) => {
-        const target = prev.find((n) => n.id === id);
-        if (target && !target.read) {
-          setUnreadCount((count) => Math.max(0, count - 1));
-        }
-        return prev.filter((n) => n.id !== id);
-      });
+      const nextNotifications = notifications.filter((n) => n.id !== id);
+      setNotifications(nextNotifications);
+      setParentNotifications(nextNotifications);
+      setUnreadCount(nextNotifications.filter((n) => !n.read).length);
+      refreshNotifications?.();
     } catch (error) {
       console.error('Failed to delete', error);
     }
@@ -109,6 +128,28 @@ const NotificationModal = ({ onClose, setUnreadCount }) => {
     } finally {
       setSavingPrefs(false);
     }
+  };
+
+  const getNotificationTarget = (notification) => {
+    if (notification.type === 'BOOKING') {
+      return currentRole === 'ADMIN' ? '/admin/bookings' : '/bookings';
+    }
+
+    if (notification.type === 'TICKET') {
+      return currentRole === 'ADMIN' ? '/tech/tickets' : '/tickets';
+    }
+
+    return '/preferences';
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+
+    refreshNotifications?.();
+    onClose();
+    navigate(getNotificationTarget(notification));
   };
 
   return (
@@ -152,7 +193,20 @@ const NotificationModal = ({ onClose, setUnreadCount }) => {
             </div>
           ) : (
             notifications.map((notif) => (
-              <div key={notif.id} className={`notif-item ${notif.read ? 'read' : 'unread'}`}>
+              <div
+                key={notif.id}
+                className={`notif-item ${notif.read ? 'read' : 'unread'}`}
+                onClick={() => handleNotificationClick(notif)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleNotificationClick(notif);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                title="Open related page"
+              >
                 <div className="notif-content">
                   <span className="notif-type">{notif.type}</span>
                   <p>{notif.message}</p>
@@ -160,11 +214,27 @@ const NotificationModal = ({ onClose, setUnreadCount }) => {
                 </div>
                 <div className="notif-actions">
                   {!notif.read && (
-                    <button onClick={() => markAsRead(notif.id)} title="Mark as read" type="button">
+                    <button
+                      onClick={async (event) => {
+                        event.stopPropagation();
+                        await markAsRead(notif.id);
+                        refreshNotifications?.();
+                      }}
+                      title="Mark as read"
+                      type="button"
+                    >
                       <Check size={16} />
                     </button>
                   )}
-                  <button onClick={() => deleteNotification(notif.id)} title="Delete" className="notif-del" type="button">
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteNotification(notif.id);
+                    }}
+                    title="Delete"
+                    className="notif-del"
+                    type="button"
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>

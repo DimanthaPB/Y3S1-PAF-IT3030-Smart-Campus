@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getResources,
   createResource,
@@ -19,10 +19,10 @@ const pageStyles = {
 };
 
 const containerStyles = {
-  maxWidth: "1200px",
+  maxWidth: "1440px",
   margin: "0 auto",
   display: "grid",
-  gap: "24px",
+  gap: "20px",
 };
 
 const cardStyles = {
@@ -111,20 +111,22 @@ function StatusBadge({ status }) {
   const badgeMap = {
     ACTIVE: {
       background:
-        "linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(20, 184, 166, 0.32) 100%)",
-      color: "#ecfdf5",
-      border: "1px solid rgba(110, 231, 183, 0.35)",
-      boxShadow: "0 10px 24px rgba(16, 185, 129, 0.22)",
+        "linear-gradient(135deg, rgba(22, 163, 74, 0.34) 0%, rgba(13, 148, 136, 0.3) 100%)",
+      color: "#f0fdf4",
+      border: "1px solid rgba(74, 222, 128, 0.32)",
+      boxShadow: "0 6px 14px rgba(16, 185, 129, 0.14)",
     },
     OUT_OF_SERVICE: {
-      background: "rgba(248, 113, 113, 0.15)",
-      color: "#fca5a5",
-      border: "1px solid rgba(248, 113, 113, 0.22)",
+      background: "rgba(153, 27, 27, 0.28)",
+      color: "#fecaca",
+      border: "1px solid rgba(248, 113, 113, 0.28)",
+      boxShadow: "0 6px 14px rgba(239, 68, 68, 0.1)",
     },
     INACTIVE: {
-      background: "rgba(148, 163, 184, 0.14)",
-      color: "#cbd5e1",
-      border: "1px solid rgba(148, 163, 184, 0.18)",
+      background: "rgba(51, 65, 85, 0.72)",
+      color: "#e2e8f0",
+      border: "1px solid rgba(148, 163, 184, 0.22)",
+      boxShadow: "0 6px 14px rgba(15, 23, 42, 0.14)",
     },
   };
 
@@ -135,7 +137,7 @@ function StatusBadge({ status }) {
       style={{
         ...badgeStyle,
         borderRadius: "999px",
-        padding: status === "ACTIVE" ? "7px 12px 7px 10px" : "6px 10px",
+        padding: status === "ACTIVE" ? "8px 13px 8px 11px" : "7px 11px",
         fontSize: "12px",
         fontWeight: 700,
         letterSpacing: "0.05em",
@@ -160,8 +162,255 @@ function StatusBadge({ status }) {
   );
 }
 
+function IconActionButton({ label, onClick, tone = "neutral", icon }) {
+  const toneStyles = {
+    neutral: {
+      background: "rgba(15, 23, 42, 0.56)",
+      color: "#cbd5e1",
+      border: "1px solid rgba(148, 163, 184, 0.14)",
+    },
+    danger: {
+      background: "rgba(127, 29, 29, 0.14)",
+      color: "#fca5a5",
+      border: "1px solid rgba(248, 113, 113, 0.16)",
+    },
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      style={{
+        ...(toneStyles[tone] || toneStyles.neutral),
+        width: "34px",
+        height: "34px",
+        borderRadius: "12px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "14px",
+        cursor: "pointer",
+        transition: "all 180ms ease",
+      }}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function HealthMetricCard({ icon, label, value, description, tone = "neutral" }) {
+  const toneMap = {
+    success: {
+      border: "1px solid rgba(74, 222, 128, 0.18)",
+      background: "rgba(6, 24, 21, 0.78)",
+      valueColor: "#dcfce7",
+    },
+    warning: {
+      border: "1px solid rgba(250, 204, 21, 0.18)",
+      background: "rgba(38, 24, 8, 0.72)",
+      valueColor: "#fef3c7",
+    },
+    danger: {
+      border: "1px solid rgba(248, 113, 113, 0.18)",
+      background: "rgba(42, 14, 18, 0.74)",
+      valueColor: "#fecaca",
+    },
+    neutral: {
+      border: "1px solid rgba(148, 163, 184, 0.14)",
+      background: "rgba(12, 18, 31, 0.82)",
+      valueColor: "#f8fafc",
+    },
+  };
+
+  const styles = toneMap[tone] || toneMap.neutral;
+
+  return (
+    <div
+      style={{
+        padding: "14px 16px",
+        borderRadius: "18px",
+        border: styles.border,
+        background: styles.background,
+        display: "grid",
+        gap: "8px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          color: "#94a3b8",
+          fontSize: "12px",
+          fontWeight: 600,
+        }}
+      >
+        <span style={{ fontSize: "14px", opacity: 0.9 }}>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <div style={{ fontSize: "28px", fontWeight: 800, color: styles.valueColor }}>{value}</div>
+      <div style={{ fontSize: "12px", color: "#94a3b8", lineHeight: 1.5 }}>{description}</div>
+    </div>
+  );
+}
+
+function ResourceCard({
+  resource,
+  today,
+  onEdit,
+  onDelete,
+  onExtendAvailability,
+}) {
+  const isExpired = resource.availableToDate && resource.availableToDate < today;
+
+  return (
+    <article
+      style={{
+        background: "rgba(9, 14, 26, 0.94)",
+        border: isExpired
+          ? "1px solid rgba(248, 113, 113, 0.18)"
+          : "1px solid rgba(148, 163, 184, 0.12)",
+        borderRadius: "22px",
+        padding: "16px 16px 14px",
+        display: "grid",
+        gap: "10px",
+        alignContent: "start",
+        boxShadow: "0 10px 22px rgba(2, 8, 23, 0.14)",
+        transition: "transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "10px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              width: "fit-content",
+              padding: "5px 10px",
+              borderRadius: "999px",
+              background: "rgba(30, 41, 59, 0.82)",
+              border: "1px solid rgba(125, 211, 252, 0.12)",
+              color: "#93c5fd",
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              opacity: 0.88,
+            }}
+          >
+            {resource.type.replaceAll("_", " ")}
+          </span>
+          <StatusBadge status={resource.status} />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          {isExpired && (
+            <IconActionButton
+              label="Extend availability"
+              onClick={() => onExtendAvailability(resource)}
+              icon="📅"
+            />
+          )}
+          <IconActionButton label="Edit resource" onClick={() => onEdit(resource)} icon="✎" />
+          <IconActionButton
+            label="Delete resource"
+            onClick={() => onDelete(resource.id)}
+            tone="danger"
+            icon="🗑"
+          />
+        </div>
+      </div>
+
+      <h3
+        style={{
+          margin: 0,
+          fontSize: "21px",
+          color: "#f8fafc",
+          lineHeight: 1.2,
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {resource.name}
+      </h3>
+
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px",
+          alignItems: "center",
+          color: "#94a3b8",
+          fontSize: "13px",
+          lineHeight: 1.5,
+        }}
+      >
+        <span style={{ color: "#64748b", fontSize: "12px" }}>📍</span>
+        <span style={{ fontWeight: 600, color: "#e2e8f0" }}>{resource.location}</span>
+        <span style={{ color: "rgba(148, 163, 184, 0.35)" }}>•</span>
+        <span style={{ color: "#64748b", fontSize: "12px" }}>👥</span>
+        <span style={{ fontWeight: 600, color: "#e2e8f0" }}>{resource.capacity ?? "N/A"}</span>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gap: "6px",
+          paddingTop: "10px",
+          borderTop: "1px solid rgba(148, 163, 184, 0.12)",
+          color: "#94a3b8",
+          fontSize: "13px",
+          lineHeight: 1.5,
+        }}
+      >
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ color: "#64748b", fontSize: "12px" }}>🕒</span>
+          <span style={{ fontWeight: 700, color: "#f8fafc" }}>
+            {resource.availabilityStart || "--:--"} to {resource.availabilityEnd || "--:--"}
+          </span>
+          <span style={{ color: "rgba(148, 163, 184, 0.35)" }}>|</span>
+          <span style={{ color: "#64748b", fontSize: "12px" }}>📅</span>
+          <span style={{ fontWeight: 600, color: isExpired ? "#fecaca" : "#e2e8f0" }}>
+            {resource.availableFromDate || "Not set"} to {resource.availableToDate || "Not set"}
+          </span>
+        </div>
+        {isExpired && (
+          <div style={{ color: "#fca5a5", fontSize: "12px", fontWeight: 700 }}>
+            Availability has expired. Extend the dates to keep this resource current.
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          color: "rgba(148, 163, 184, 0.82)",
+          fontSize: "12.5px",
+          lineHeight: 1.6,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          minHeight: "40px",
+        }}
+      >
+        {resource.description || "No description provided."}
+      </div>
+    </article>
+  );
+}
+
 function Resources() {
   const today = new Date().toISOString().split("T")[0];
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
 
   const emptyForm = {
     name: "",
@@ -181,6 +430,7 @@ function Resources() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [filters, setFilters] = useState({
     type: "",
@@ -192,12 +442,148 @@ function Resources() {
     availabilityStart: "",
     availabilityEnd: "",
   });
+  const formSectionRef = useRef(null);
+  const resourceNameInputRef = useRef(null);
+  const resultsSectionRef = useRef(null);
 
   const activeCount = resources.filter((resource) => resource.status === "ACTIVE").length;
   const outOfServiceCount = resources.filter(
     (resource) => resource.status === "OUT_OF_SERVICE"
   ).length;
   const inactiveCount = resources.filter((resource) => resource.status === "INACTIVE").length;
+  const totalManagedCapacity = resources.reduce(
+    (sum, resource) => sum + (Number(resource.capacity) || 0),
+    0
+  );
+  const expiredResources = resources.filter(
+    (resource) => resource.availableToDate && resource.availableToDate < today
+  );
+  const expiringSoonResources = resources.filter(
+    (resource) =>
+      resource.availableToDate &&
+      resource.availableToDate >= today &&
+      resource.availableToDate <= nextWeek
+  );
+  const resourcesMissingDescription = resources.filter(
+    (resource) => !resource.description || !resource.description.trim()
+  );
+  const resourcesMissingAvailability = resources.filter(
+    (resource) =>
+      !resource.availableFromDate ||
+      !resource.availableToDate ||
+      !resource.availabilityStart ||
+      !resource.availabilityEnd
+  );
+  const healthyResources = resources.filter(
+    (resource) =>
+      resource.status === "ACTIVE" &&
+      (!resource.availableToDate || resource.availableToDate >= today) &&
+      resource.description &&
+      resource.description.trim() &&
+      resource.availableFromDate &&
+      resource.availableToDate &&
+      resource.availabilityStart &&
+      resource.availabilityEnd
+  ).length;
+  const healthScore = resources.length
+    ? Math.round((healthyResources / resources.length) * 100)
+    : 100;
+  const healthAttentionItems = resources
+    .map((resource) => {
+      const isExpired = resource.availableToDate && resource.availableToDate < today;
+      const missingAvailability =
+        !resource.availableFromDate ||
+        !resource.availableToDate ||
+        !resource.availabilityStart ||
+        !resource.availabilityEnd;
+      const missingDescription = !resource.description || !resource.description.trim();
+      const isExpiringSoon =
+        resource.availableToDate &&
+        resource.availableToDate >= today &&
+        resource.availableToDate <= nextWeek;
+
+      if (isExpired) {
+        return {
+          resource,
+          tone: "danger",
+          title: "Date extension required",
+          detail: `Availability ended on ${resource.availableToDate}. Extend this resource to keep it bookable.`,
+          actionLabel: "Extend Dates",
+          action: () => handleExtendAvailability(resource),
+        };
+      }
+
+      if (missingAvailability) {
+        return {
+          resource,
+          tone: "warning",
+          title: "Availability details incomplete",
+          detail: "Complete the date and time window so this resource is ready for scheduling.",
+          actionLabel: "Complete Availability",
+          action: () => handleEdit(resource),
+        };
+      }
+
+      if (missingDescription) {
+        return {
+          resource,
+          tone: "neutral",
+          title: "Description missing",
+          detail: "Add a short description so admins can identify and compare this resource faster.",
+          actionLabel: "Add Details",
+          action: () => handleEdit(resource),
+        };
+      }
+
+      if (isExpiringSoon) {
+        return {
+          resource,
+          tone: "warning",
+          title: "Expiry review recommended",
+          detail: `Availability ends on ${resource.availableToDate}. Review it now if this resource should remain active.`,
+          actionLabel: "Review Dates",
+          action: () => handleEdit(resource),
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+  const statusPriority = {
+    ACTIVE: 0,
+    OUT_OF_SERVICE: 1,
+    INACTIVE: 2,
+  };
+  const orderedResources = [...resources].sort((left, right) => {
+    const leftExpired = left.availableToDate && left.availableToDate < today ? 0 : 1;
+    const rightExpired = right.availableToDate && right.availableToDate < today ? 0 : 1;
+
+    if (leftExpired !== rightExpired) {
+      return leftExpired - rightExpired;
+    }
+
+    const leftStatus = statusPriority[left.status] ?? 99;
+    const rightStatus = statusPriority[right.status] ?? 99;
+
+    if (leftStatus !== rightStatus) {
+      return leftStatus - rightStatus;
+    }
+
+    return (left.name || "").localeCompare(right.name || "");
+  });
+
+  useEffect(() => {
+    if (!notice) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setNotice("");
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
 
   const loadResources = async () => {
     try {
@@ -287,6 +673,11 @@ function Resources() {
 
       const response = await searchResources(params);
       setResources(response.data);
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 120);
+      });
     } catch (err) {
       setError("Failed to search resources");
       console.error(err);
@@ -443,13 +834,20 @@ function Resources() {
 
       if (editingId) {
         await updateResource(editingId, payload);
+        setNotice(`Resource updated successfully.`);
       } else {
         await createResource(payload);
+        setNotice(`New resource added successfully.`);
       }
 
       setForm(emptyForm);
       setEditingId(null);
       await loadResources();
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 120);
+      });
     } catch (err) {
       const backendFieldErrors = getSaveFieldErrors(err);
       if (Object.keys(backendFieldErrors).length > 0) {
@@ -460,22 +858,44 @@ function Resources() {
     }
   };
 
-  const handleEdit = (resource) => {
+  const openEditForm = (resource, options = {}) => {
+    const shouldExtendExpiredDates = options.extendDates && resource.availableToDate < today;
+
     setEditingId(resource.id);
     setFormErrors({});
     setError("");
+    setNotice(
+      shouldExtendExpiredDates
+        ? `"${resource.name}" has expired availability. Update the new dates below and save to extend it.`
+        : `You are now editing "${resource.name}". Update the form below and save your changes.`
+    );
     setForm({
       name: resource.name || "",
       type: resource.type || "LECTURE_HALL",
       capacity: resource.capacity ?? "",
       location: resource.location || "",
-      availableFromDate: resource.availableFromDate || "",
-      availableToDate: resource.availableToDate || "",
+      availableFromDate: shouldExtendExpiredDates ? today : resource.availableFromDate || "",
+      availableToDate: shouldExtendExpiredDates ? today : resource.availableToDate || "",
       availabilityStart: resource.availabilityStart || "",
       availabilityEnd: resource.availabilityEnd || "",
       status: resource.status || "ACTIVE",
       description: resource.description || "",
     });
+
+    window.requestAnimationFrame(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => {
+        resourceNameInputRef.current?.focus();
+      }, 350);
+    });
+  };
+
+  const handleEdit = (resource) => {
+    openEditForm(resource);
+  };
+
+  const handleExtendAvailability = (resource) => {
+    openEditForm(resource, { extendDates: true });
   };
 
   const handleDelete = async (id) => {
@@ -501,6 +921,7 @@ function Resources() {
     setForm(emptyForm);
     setFormErrors({});
     setError("");
+    setNotice("Edit cancelled. You can select another resource or add a new one.");
   };
 
   return (
@@ -509,7 +930,7 @@ function Resources() {
         <section
           style={{
             ...cardStyles,
-            padding: "28px",
+            padding: "32px",
             overflow: "hidden",
             position: "relative",
           }}
@@ -536,24 +957,85 @@ function Resources() {
               filter: "blur(10px)",
             }}
           />
-          <div style={{ position: "relative", display: "grid", gap: "18px" }}>
-            <div style={{ display: "grid", gap: "10px" }}>
-              <h1 style={{ margin: 0, fontSize: "42px", lineHeight: 1.1 }}>
-                Smart Resource Catalogue
-              </h1>
-              <p
+          <div style={{ position: "relative", display: "grid", gap: "22px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.8fr)",
+                gap: "20px",
+                alignItems: "stretch",
+              }}
+            >
+              <div style={{ display: "grid", gap: "12px" }}>
+                <h1 style={{ margin: 0, fontSize: "42px", lineHeight: 1.1 }}>
+                  Smart Resource Catalogue
+                </h1>
+                <p
+                  style={{
+                    margin: 0,
+                    maxWidth: "760px",
+                    color: "#cbd5e1",
+                    lineHeight: 1.7,
+                    fontSize: "16px",
+                  }}
+                >
+                  Manage lecture halls, labs, meeting rooms, and equipment with clean
+                  search, clear availability windows, and a more polished operations
+                  dashboard.
+                </p>
+              </div>
+
+              <div
                 style={{
-                  margin: 0,
-                  maxWidth: "760px",
-                  color: "#cbd5e1",
-                  lineHeight: 1.7,
-                  fontSize: "16px",
+                  display: "grid",
+                  gap: "12px",
+                  padding: "18px",
+                  borderRadius: "22px",
+                  background:
+                    "linear-gradient(135deg, rgba(14, 116, 144, 0.18) 0%, rgba(15, 23, 42, 0.92) 100%)",
+                  border: "1px solid rgba(125, 211, 252, 0.16)",
+                  alignContent: "start",
                 }}
               >
-                Manage lecture halls, labs, meeting rooms, and equipment with clean
-                search, clear availability windows, and a more polished operations
-                dashboard.
-              </p>
+                <div style={{ color: "#7dd3fc", fontSize: "12px", fontWeight: 700, letterSpacing: "0.14em" }}>
+                  OPERATIONS SNAPSHOT
+                </div>
+                <div style={{ fontSize: "28px", fontWeight: 800, color: "#f8fafc" }}>
+                  {resources.length} resources under management
+                </div>
+                <div style={{ color: "#cbd5e1", lineHeight: 1.7, fontSize: "14px" }}>
+                  Track live availability, check service status, and keep the catalogue updated
+                  from one place.
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "999px",
+                      background: "rgba(15, 23, 42, 0.78)",
+                      border: "1px solid rgba(148, 163, 184, 0.14)",
+                      color: "#e2e8f0",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {resourceTypes.length} resource types
+                  </div>
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "999px",
+                      background: "rgba(15, 23, 42, 0.78)",
+                      border: "1px solid rgba(148, 163, 184, 0.14)",
+                      color: "#e2e8f0",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {totalManagedCapacity} total capacity
+                  </div>
+                </div>
+              </div>
             </div>
             <div
               style={{
@@ -656,11 +1138,155 @@ function Resources() {
           </div>
         )}
 
+        {resources.length > 0 && (
+          <section
+            style={{
+              ...cardStyles,
+              padding: "22px 24px",
+              display: "grid",
+              gap: "18px",
+              border:
+                expiredResources.length > 0
+                  ? "1px solid rgba(248, 113, 113, 0.2)"
+                  : healthAttentionItems.length > 0
+                    ? "1px solid rgba(250, 204, 21, 0.18)"
+                    : "1px solid rgba(74, 222, 128, 0.16)",
+            }}
+          >
+            <SectionTitle
+              eyebrow="Resource Health & Expiry Alerts"
+              title={
+                healthAttentionItems.length > 0
+                  ? `${healthAttentionItems.length} resources need admin attention`
+                  : "Catalogue health looks stable"
+              }
+              description="This operational health panel highlights expired availability, upcoming expiry, and incomplete resource profiles so you can fix issues before they affect bookings."
+            />
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "14px",
+              }}
+            >
+              <HealthMetricCard
+                icon="🛡"
+                label="Health score"
+                value={`${healthScore}%`}
+                description="Resources that are active, current, and fully described."
+                tone={healthScore >= 80 ? "success" : healthScore >= 55 ? "warning" : "danger"}
+              />
+              <HealthMetricCard
+                icon="⚠"
+                label="Expired"
+                value={expiredResources.length}
+                description="Resources whose availability has already ended."
+                tone={expiredResources.length > 0 ? "danger" : "neutral"}
+              />
+              <HealthMetricCard
+                icon="⏳"
+                label="Expiring soon"
+                value={expiringSoonResources.length}
+                description="Resources that end within the next 7 days."
+                tone={expiringSoonResources.length > 0 ? "warning" : "neutral"}
+              />
+              <HealthMetricCard
+                icon="📝"
+                label="Missing details"
+                value={resourcesMissingDescription.length + resourcesMissingAvailability.length}
+                description="Descriptions or availability fields that still need completion."
+                tone={
+                  resourcesMissingDescription.length + resourcesMissingAvailability.length > 0
+                    ? "warning"
+                    : "neutral"
+                }
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: "14px",
+              }}
+            >
+              {healthAttentionItems.length === 0 && (
+                <div
+                  style={{
+                    padding: "16px 18px",
+                    borderRadius: "20px",
+                    background: "rgba(8, 28, 21, 0.42)",
+                    border: "1px solid rgba(74, 222, 128, 0.18)",
+                    display: "grid",
+                    gap: "10px",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, color: "#f8fafc" }}>No urgent fixes needed</div>
+                  <div style={{ color: "#bbf7d0", fontSize: "13px", lineHeight: 1.6 }}>
+                    Your resource catalogue has no expired records in the current attention queue. Keep reviewing dates and details to maintain this state.
+                  </div>
+                </div>
+              )}
+
+              {healthAttentionItems.map((item) => (
+                <div
+                  key={`${item.resource.id}-${item.title}`}
+                  style={{
+                    padding: "16px 18px",
+                    borderRadius: "20px",
+                    background:
+                      item.tone === "danger"
+                        ? "rgba(69, 10, 10, 0.38)"
+                        : item.tone === "warning"
+                          ? "rgba(120, 53, 15, 0.2)"
+                          : "rgba(15, 23, 42, 0.75)",
+                    border:
+                      item.tone === "danger"
+                        ? "1px solid rgba(248, 113, 113, 0.2)"
+                        : item.tone === "warning"
+                          ? "1px solid rgba(250, 204, 21, 0.2)"
+                          : "1px solid rgba(148, 163, 184, 0.16)",
+                    display: "grid",
+                    gap: "10px",
+                  }}
+                >
+                  <div style={{ display: "grid", gap: "4px" }}>
+                    <div style={{ fontWeight: 700, color: "#f8fafc" }}>{item.resource.name}</div>
+                    <div style={{ color: "#cbd5e1", fontSize: "13px", fontWeight: 600 }}>
+                      {item.title}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      color:
+                        item.tone === "danger"
+                          ? "#fecaca"
+                          : item.tone === "warning"
+                            ? "#fde68a"
+                            : "#cbd5e1",
+                      fontSize: "13px",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {item.detail}
+                  </div>
+                  <div>
+                    <button type="button" onClick={item.action} style={secondaryButtonStyles}>
+                      {item.actionLabel}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-            gap: "24px",
+            gridTemplateColumns: "minmax(320px, 0.95fr) minmax(420px, 1fr)",
+            gap: "20px",
             alignItems: "start",
           }}
         >
@@ -795,16 +1421,41 @@ function Resources() {
             </div>
           </section>
 
-          <section style={{ ...cardStyles, padding: "24px", display: "grid", gap: "20px" }}>
+          <section
+            ref={formSectionRef}
+            style={{ ...cardStyles, padding: "24px", display: "grid", gap: "20px" }}
+          >
             <SectionTitle
               eyebrow={editingId ? "Edit" : "Create"}
               title={editingId ? "Update a resource" : "Add a new resource"}
               description="Keep the catalogue complete with location, capacity, status, and availability windows."
             />
 
+            {notice && (
+              <div
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: "18px",
+                  background: editingId
+                    ? "rgba(59, 130, 246, 0.14)"
+                    : "rgba(34, 197, 94, 0.14)",
+                  border: editingId
+                    ? "1px solid rgba(96, 165, 250, 0.24)"
+                    : "1px solid rgba(74, 222, 128, 0.22)",
+                  color: "#dbeafe",
+                  lineHeight: 1.6,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                {notice}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
               <Field label="Resource Name" error={formErrors.name}>
                 <input
+                  ref={resourceNameInputRef}
                   name="name"
                   placeholder="Resource name"
                   value={form.name}
@@ -961,7 +1612,10 @@ function Resources() {
           </section>
         </div>
 
-        <section style={{ ...cardStyles, padding: "24px", display: "grid", gap: "22px" }}>
+        <section
+          ref={resultsSectionRef}
+          style={{ ...cardStyles, padding: "24px", display: "grid", gap: "22px" }}
+        >
           <SectionTitle
             eyebrow="Catalogue"
             title="All resources"
@@ -1050,137 +1704,19 @@ function Resources() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: "18px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: "16px",
               }}
             >
-              {resources.map((resource) => (
-                <article
+              {orderedResources.map((resource) => (
+                <ResourceCard
                   key={resource.id}
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 16, 28, 0.94) 100%)",
-                    border: "1px solid rgba(96, 165, 250, 0.12)",
-                    borderRadius: "24px",
-                    padding: "22px",
-                    display: "grid",
-                    gap: "18px",
-                    alignContent: "start",
-                    boxShadow: "0 20px 44px rgba(2, 8, 23, 0.24)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start" }}>
-                    <div style={{ display: "grid", gap: "10px" }}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          width: "fit-content",
-                          padding: "7px 11px",
-                          borderRadius: "999px",
-                          background: "rgba(56, 189, 248, 0.1)",
-                          border: "1px solid rgba(125, 211, 252, 0.18)",
-                          color: "#7dd3fc",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          letterSpacing: "0.03em",
-                        }}
-                      >
-                        {resource.type.replaceAll("_", " ")}
-                      </span>
-                      <h3 style={{ margin: 0, fontSize: "19px", color: "#f8fafc", lineHeight: 1.25 }}>
-                        {resource.name}
-                      </h3>
-                    </div>
-                    <StatusBadge status={resource.status} />
-                  </div>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: "12px",
-                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "14px",
-                        borderRadius: "18px",
-                        background: "rgba(30, 41, 59, 0.56)",
-                        border: "1px solid rgba(148, 163, 184, 0.1)",
-                      }}
-                    >
-                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>Capacity</div>
-                      <div style={{ marginTop: "6px", fontWeight: 700, fontSize: "22px", color: "#f8fafc" }}>
-                        {resource.capacity ?? "N/A"}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        padding: "14px",
-                        borderRadius: "18px",
-                        background: "rgba(30, 41, 59, 0.56)",
-                        border: "1px solid rgba(148, 163, 184, 0.1)",
-                      }}
-                    >
-                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>Date Range</div>
-                      <div style={{ marginTop: "6px", fontWeight: 700, lineHeight: 1.45 }}>
-                        {resource.availableFromDate || "Not set"} to {resource.availableToDate || "Not set"}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        padding: "14px",
-                        borderRadius: "18px",
-                        background: "rgba(30, 41, 59, 0.56)",
-                        border: "1px solid rgba(148, 163, 184, 0.1)",
-                        gridColumn: "1 / -1",
-                      }}
-                    >
-                      <div style={{ color: "#94a3b8", fontSize: "12px" }}>Availability Window</div>
-                      <div style={{ marginTop: "6px", fontWeight: 700, color: "#f8fafc" }}>
-                        {resource.availabilityStart || "--:--"} to {resource.availabilityEnd || "--:--"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "14px 16px",
-                      borderRadius: "18px",
-                      background: "linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.2) 100%)",
-                      border: "1px solid rgba(148, 163, 184, 0.1)",
-                    }}
-                  >
-                    <div>
-                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>Location</span>
-                      <div style={{ marginTop: "6px", color: "#f8fafc", fontWeight: 600 }}>{resource.location}</div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "14px 16px",
-                      borderRadius: "18px",
-                      background: "rgba(15, 23, 42, 0.46)",
-                      border: "1px solid rgba(148, 163, 184, 0.1)",
-                    }}
-                  >
-                    <span style={{ color: "#94a3b8", fontSize: "12px" }}>Description</span>
-                    <div style={{ marginTop: "6px", color: "#cbd5e1", lineHeight: 1.7 }}>
-                      {resource.description || "No description provided."}
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "auto" }}>
-                    <button onClick={() => handleEdit(resource)} style={secondaryButtonStyles}>
-                      Edit
-                    </button>
-                    <button onClick={() => handleDelete(resource.id)} style={dangerButtonStyles}>
-                      Delete
-                    </button>
-                  </div>
-                </article>
+                  resource={resource}
+                  today={today}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onExtendAvailability={handleExtendAvailability}
+                />
               ))}
             </div>
           )}

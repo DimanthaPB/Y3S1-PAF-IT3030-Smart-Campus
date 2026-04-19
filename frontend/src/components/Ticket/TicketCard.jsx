@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import AttachmentList from "../Attachment/AttachmentList";
 import CommentSection from "../Comment/CommentSection";
 import api from "../../utils/api";
@@ -227,7 +227,7 @@ function TicketCard({
           </span>
         </p>
         <p className="ticket-meta-item">
-          <strong>Assigned To:</strong> {ticket.assignedTo || "Admin"}
+          <strong>Assigned To:</strong> {ticket.assignedTo || "Not assigned"}
         </p>
         <p className="ticket-meta-item">
           <strong>Resource:</strong> {selectedResourceName}
@@ -242,6 +242,40 @@ function TicketCard({
           <strong>Resolution Notes:</strong> {ticket.resolutionNotes}
         </p>
       )}
+
+      {canEditStatus && (
+        <div className="ticket-status-row">
+          <label>
+            <strong>Assign Technician:</strong>
+          </label>
+
+          <select
+            value={ticket.assignedTo || ""}
+              onChange={async (e) => {
+              const newAssignee = e.target.value;
+
+                try {
+                  const res = await api.put(`/tickets/${ticket.id}/assignment`, {
+                    assignedTo: newAssignee || null
+                  });
+
+                  if (onTicketUpdated) {
+                    onTicketUpdated(res.data);
+                  }
+                } catch (err) {
+                  console.error("Assign error:", err);
+                  alert("Failed to assign technician");
+                }
+              }}
+              className="status-select"
+            >
+              <option value="">Not assigned</option>
+              <option value="Technician 1">Technician1</option>
+              <option value="Technician 2">Technician2</option>
+              <option value="Technician 3">Technician3</option>
+            </select>
+          </div>
+        )}
 
       {canEditStatus && (
         <div className="ticket-status-row">
@@ -262,6 +296,7 @@ function TicketCard({
           </select>
         </div>
       )}
+
       {statusUpdateError && !shouldShowResolutionNotesInput && (
         <p className="attachment-error-text">{statusUpdateError}</p>
       )}
