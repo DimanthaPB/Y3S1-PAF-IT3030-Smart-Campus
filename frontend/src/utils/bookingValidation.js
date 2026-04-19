@@ -13,6 +13,8 @@ export const getCurrentTimeString = () => {
 export const sanitizeExpectedAttendees = (value) =>
   value.replace(/[^0-9]/g, '').replace(/^0+/, '');
 
+const DEFAULT_BOOKING_DURATION_MINUTES = 30;
+
 const parseTimeToMinutes = (timeValue = '') => {
   if (!timeValue || typeof timeValue !== 'string') {
     return null;
@@ -27,6 +29,18 @@ const parseTimeToMinutes = (timeValue = '') => {
   }
 
   return hours * 60 + minutes;
+};
+
+export const formatMinutesToTimeString = (totalMinutes) => {
+  if (!Number.isFinite(totalMinutes)) {
+    return '';
+  }
+
+  const normalizedMinutes = Math.max(0, totalMinutes);
+  const hours = String(Math.floor(normalizedMinutes / 60)).padStart(2, '0');
+  const minutes = String(normalizedMinutes % 60).padStart(2, '0');
+
+  return `${hours}:${minutes}`;
 };
 
 export const getMinimumBookingDate = (availableFromDate = '', todayDate = getTodayDateString()) =>
@@ -112,10 +126,14 @@ export const shouldCheckBookingConflict = ({ resourceId, bookingDate, startTime,
     resourceId &&
       bookingDate &&
       startTime &&
-      endTime &&
       parseTimeToMinutes(startTime) !== null &&
-      parseTimeToMinutes(endTime) !== null &&
-      parseTimeToMinutes(startTime) < parseTimeToMinutes(endTime)
+      (
+        !endTime ||
+        (
+          parseTimeToMinutes(endTime) !== null &&
+          parseTimeToMinutes(startTime) < parseTimeToMinutes(endTime)
+        )
+      )
   );
 
 export const hasTimeOverlap = ({ startTime, endTime, existingStartTime, existingEndTime }) => {
@@ -132,4 +150,141 @@ export const hasTimeOverlap = ({ startTime, endTime, existingStartTime, existing
       startTimeMinutes < existingEndTimeMinutes &&
       endTimeMinutes > existingStartTimeMinutes
   );
+};
+
+export const findConflictingBooking = ({
+  startTime = '',
+  endTime = '',
+  existingBookings = [],
+  ignoredBookingId = null,
+}) => {
+  const startTimeMinutes = parseTimeToMinutes(startTime);
+  const endTimeMinutes = parseTimeToMinutes(endTime);
+
+  if (startTimeMinutes === null) {
+    return null;
+  }
+
+  return existingBookings.find((booking) => {
+    if (String(booking.id) === String(ignoredBookingId)) {
+      return false;
+    }
+
+    const existingStartTimeMinutes = parseTimeToMinutes(booking.startTime);
+    const existingEndTimeMinutes = parseTimeToMinutes(booking.endTime);
+
+    if (
+      existingStartTimeMinutes === null ||
+      existingEndTimeMinutes === null ||
+      existingStartTimeMinutes >= existingEndTimeMinutes
+    ) {
+      return false;
+    }
+
+    if (endTime && endTimeMinutes !== null && startTimeMinutes < endTimeMinutes) {
+      return (
+        startTimeMinutes < existingEndTimeMinutes &&
+        endTimeMinutes > existingStartTimeMinutes
+      );
+    }
+
+    return (
+      startTimeMinutes >= existingStartTimeMinutes &&
+      startTimeMinutes < existingEndTimeMinutes
+    );
+  }) || null;
+};
+
+export const getNextAvailableSlot = ({
+  startTime = '',
+  endTime = '',
+  existingBookings = [],
+  availabilityStart = '',
+  availabilityEnd = '',
+  ignoredBookingId = null,
+}) => {
+  const requestedStartMinutes = parseTimeToMinutes(startTime);
+  const requestedEndMinutes = parseTimeToMinutes(endTime);
+  const availabilityStartMinutes = parseTimeToMinutes(availabilityStart);
+  const availabilityEndMinutes = parseTimeToMinutes(availabilityEnd);
+
+  if (requestedStartMinutes === null) {
+    return null;
+  }
+
+  const requestedDuration =
+    requestedEndMinutes !== null && requestedStartMinutes < requestedEndMinutes
+      ? requestedEndMinutes - requestedStartMinutes
+      : DEFAULT_BOOKING_DURATION_MINUTES;
+
+  if (requestedDuration <= 0) {
+    return null;
+  }
+
+  let candidateStartMinutes = requestedStartMinutes;
+
+  if (
+    availabilityStartMinutes !== null &&
+    candidateStartMinutes < availabilityStartMinutes
+  ) {
+    candidateStartMinutes = availabilityStartMinutes;
+  }
+
+  const normalizedBookings = existingBookings
+    .filter((booking) => String(booking.id) !== String(ignoredBookingId))
+    .map((booking) => ({
+      startMinutes: parseTimeToMinutes(booking.startTime),
+      endMinutes: parseTimeToMinutes(booking.endTime),
+    }))
+    .filter(
+      (booking) =>
+        booking.startMinutes !== null &&
+        booking.endMinutes !== null &&
+        booking.startMinutes < booking.endMinutes
+    )
+    .sort((leftBooking, rightBooking) => leftBooking.startMinutes - rightBooking.startMinutes);
+
+  for (const existingBooking of normalizedBookings) {
+    const candidateEndMinutes = candidateStartMinutes + requestedDuration;
+
+    if (candidateEndMinutes <= existingBooking.startMinutes) {
+      break;
+    }
+
+    if (
+      candidateStartMinutes < existingBooking.endMinutes &&
+      candidateEndMinutes > existingBooking.startMinutes
+    ) {
+      candidateStartMinutes = existingBooking.endMinutes;
+    }
+  }
+
+  for (const existingBooking of normalizedBookings) {
+    const candidateEndMinutes = candidateStartMinutes + requestedDuration;
+
+    if (candidateEndMinutes <= existingBooking.startMinutes) {
+      break;
+    }
+
+    if (
+      candidateStartMinutes < existingBooking.endMinutes &&
+      candidateEndMinutes > existingBooking.startMinutes
+    ) {
+      candidateStartMinutes = existingBooking.endMinutes;
+    }
+  }
+
+  const candidateEndMinutes = candidateStartMinutes + requestedDuration;
+
+  if (
+    availabilityEndMinutes !== null &&
+    candidateEndMinutes > availabilityEndMinutes
+  ) {
+    return null;
+  }
+
+  return {
+    startTime: formatMinutesToTimeString(candidateStartMinutes),
+    endTime: formatMinutesToTimeString(candidateEndMinutes),
+  };
 };

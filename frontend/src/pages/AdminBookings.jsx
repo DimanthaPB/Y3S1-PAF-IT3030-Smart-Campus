@@ -279,7 +279,16 @@ function AdminBookings() {
       await fetchBookings();
     } catch (error) {
       console.error(error);
-      setActionError(getApiErrorMessage(error, 'Failed to approve booking'));
+      const errorMessage = getApiErrorMessage(error, 'Failed to approve booking');
+
+      if (errorMessage === 'Booking not found') {
+        setActionModal(null);
+        alert('This booking no longer exists. The list will now refresh.');
+        await fetchBookings();
+        return;
+      }
+
+      setActionError(errorMessage);
     } finally {
       setActiveAction(null);
     }
@@ -297,7 +306,16 @@ function AdminBookings() {
       await fetchBookings();
     } catch (error) {
       console.error('Reject failed:', error);
-      setActionError(getApiErrorMessage(error, 'Failed to reject booking'));
+      const errorMessage = getApiErrorMessage(error, 'Failed to reject booking');
+
+      if (errorMessage === 'Booking not found') {
+        setActionModal(null);
+        alert('This booking no longer exists. The list will now refresh.');
+        await fetchBookings();
+        return;
+      }
+
+      setActionError(errorMessage);
     } finally {
       setActiveAction(null);
     }
@@ -315,7 +333,16 @@ function AdminBookings() {
       await fetchBookings();
     } catch (error) {
       console.error('Cancel failed:', error);
-      setActionError(getApiErrorMessage(error, 'Failed to cancel booking'));
+      const errorMessage = getApiErrorMessage(error, 'Failed to cancel booking');
+
+      if (errorMessage === 'Booking not found') {
+        setActionModal(null);
+        alert('This booking no longer exists. The list will now refresh.');
+        await fetchBookings();
+        return;
+      }
+
+      setActionError(errorMessage);
     } finally {
       setActiveAction(null);
     }

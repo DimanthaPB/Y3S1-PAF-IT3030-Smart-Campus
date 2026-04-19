@@ -7,13 +7,14 @@ import { getResources } from '../../utils/api';
 import BookingNotice from './BookingNotice';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 import {
+  findConflictingBooking,
   getAttendeeValidationMessage,
   getCurrentTimeString,
   getMinimumBookingDate,
   getMinimumBookingTime,
+  getNextAvailableSlot,
   getTimeRangeValidationMessage,
   getTodayDateString,
-  hasTimeOverlap,
   sanitizeExpectedAttendees,
   shouldCheckBookingConflict,
 } from '../../utils/bookingValidation';
@@ -127,13 +128,13 @@ const formStyles = {
 };
 
 function BookingForm({ onBookingCreated, currentUserEmail }) {
-  const conflictMessage =
-    'This time is already selected by another booking. Please choose a different start or end time.';
   const [resources, setResources] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [attendeeError, setAttendeeError] = useState('');
   const [bookingConflictWarning, setBookingConflictWarning] = useState('');
+  const [suggestedSlot, setSuggestedSlot] = useState(null);
   const [timeRangeError, setTimeRangeError] = useState('');
   const [formData, setFormData] = useState({
     resourceType: '',
@@ -164,6 +165,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
       name === 'endTime'
     ) {
       setBookingConflictWarning('');
+      setSuggestedSlot(null);
       setTimeRangeError('');
     }
 
@@ -221,6 +223,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
   );
   const isSubmitDisabled =
     resourcesLoading ||
+    isSubmitting ||
     !currentUserEmail ||
     Boolean(attendeeError) ||
     Boolean(bookingConflictWarning) ||
@@ -288,6 +291,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
         })
       ) {
         setBookingConflictWarning('');
+        setSuggestedSlot(null);
         return;
       }
 
@@ -297,24 +301,34 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
           bookingDate: formData.bookingDate,
         });
 
-        const conflictingBooking = (response.data || []).find((booking) => {
-          return hasTimeOverlap({
-            startTime: formData.startTime,
-            endTime: formData.endTime,
-            existingStartTime: booking.startTime,
-            existingEndTime: booking.endTime,
-          });
+        const conflictingBooking = findConflictingBooking({
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          existingBookings: response.data || [],
         });
 
         if (conflictingBooking) {
-          setBookingConflictWarning(conflictMessage);
+          setBookingConflictWarning(
+            `Conflicts with ${conflictingBooking.status} booking from ${conflictingBooking.startTime} to ${conflictingBooking.endTime}.`
+          );
+          setSuggestedSlot(
+            getNextAvailableSlot({
+              startTime: formData.startTime,
+              endTime: formData.endTime,
+              existingBookings: response.data || [],
+              availabilityStart,
+              availabilityEnd,
+            })
+          );
           return;
         }
 
         setBookingConflictWarning('');
+        setSuggestedSlot(null);
       } catch (error) {
         console.error('Error checking booking conflicts:', error);
         setBookingConflictWarning('');
+        setSuggestedSlot(null);
       }
     };
 
@@ -324,7 +338,23 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     formData.endTime,
     formData.startTime,
     selectedResource?.id,
+    availabilityEnd,
+    availabilityStart,
   ]);
+
+  const applySuggestedSlot = () => {
+    if (!suggestedSlot) {
+      return;
+    }
+
+    setFormData((previousData) => ({
+      ...previousData,
+      startTime: suggestedSlot.startTime,
+      endTime: suggestedSlot.endTime,
+    }));
+    setBookingConflictWarning('');
+    setSuggestedSlot(null);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -387,10 +417,9 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     };
 
     try {
+      setIsSubmitting(true);
       setFeedback(null);
-      console.log('Booking payload being sent:', bookingPayload);
       const response = await createBooking(bookingPayload);
-      setFeedback(null);
       alert('Booking created successfully.');
 
       setFormData({
@@ -406,17 +435,19 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
       if (onBookingCreated) {
         onBookingCreated(response.data);
       }
-      } catch (error) {
-        console.error('Error creating booking:', error);
-        const errorMessage = getApiErrorMessage(
-          error,
-          'Failed to create booking'
-        );
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      const errorMessage = getApiErrorMessage(
+        error,
+        'Failed to create booking'
+      );
 
-        setFeedback({
-          type: 'error',
+      setFeedback({
+        type: 'error',
         message: errorMessage,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -588,6 +619,45 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
                 {bookingConflictWarning}
               </div>
             ) : null}
+            {bookingConflictWarning && suggestedSlot ? (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  color: '#bfdbfe',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.6',
+                }}
+              >
+                Suggested next free slot: {suggestedSlot.startTime} - {suggestedSlot.endTime}
+                <button
+                  type="button"
+                  onClick={applySuggestedSlot}
+                  style={{
+                    marginLeft: '0.75rem',
+                    padding: '0.45rem 0.75rem',
+                    borderRadius: '999px',
+                    border: '1px solid rgba(59, 130, 246, 0.35)',
+                    background: 'rgba(59, 130, 246, 0.18)',
+                    color: '#dbeafe',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                  }}
+                >
+                  Use suggestion
+                </button>
+              </div>
+            ) : bookingConflictWarning ? (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  color: '#bfdbfe',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.6',
+                }}
+              >
+                No later vacant slot is available within this resource's booking hours for the selected duration.
+              </div>
+            ) : null}
           </div>
 
           <div style={formStyles.fieldWrap}>
@@ -624,6 +694,29 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
                 }}
               >
                 {bookingConflictWarning}
+              </div>
+            ) : null}
+            {bookingConflictWarning && suggestedSlot ? (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  color: '#bfdbfe',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.6',
+                }}
+              >
+                Suggested next free slot: {suggestedSlot.startTime} - {suggestedSlot.endTime}
+              </div>
+            ) : bookingConflictWarning ? (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  color: '#bfdbfe',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.6',
+                }}
+              >
+                No later vacant slot is available within this resource's booking hours for the selected duration.
               </div>
             ) : null}
           </div>
@@ -716,7 +809,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
             opacity: isSubmitDisabled ? 0.65 : 1,
           }}
         >
-          Create Booking
+          {isSubmitting ? 'Creating Booking...' : 'Create Booking'}
         </button>
       </form>
     </div>

@@ -71,7 +71,7 @@ public class BookingService {
         );
 
         if (hasConflict) {
-            throw new BookingConflictException("This resource is already booked for the selected time.");
+            throw new BookingConflictException(buildConflictMessage(conflictingBookings));
         }
 
         booking.setBookedBy(currentUserEmail);
@@ -357,8 +357,40 @@ public class BookingService {
         );
 
         if (hasConflict) {
-            throw new BookingConflictException("This resource is already booked for the selected time.");
+            List<Booking> activeConflicts = conflictingBookings.stream()
+                    .filter(existingBooking ->
+                            !existingBooking.getId().equals(bookingIdToIgnore) &&
+                                    (existingBooking.getStatus() == BookingStatus.PENDING ||
+                                            existingBooking.getStatus() == BookingStatus.APPROVED)
+                    )
+                    .toList();
+            throw new BookingConflictException(buildConflictMessage(activeConflicts));
         }
+    }
+
+    private String buildConflictMessage(List<Booking> conflictingBookings) {
+        List<Booking> activeConflicts = conflictingBookings.stream()
+                .filter(existingBooking ->
+                        existingBooking.getStatus() == BookingStatus.PENDING ||
+                                existingBooking.getStatus() == BookingStatus.APPROVED
+                )
+                .toList();
+
+        if (activeConflicts.isEmpty()) {
+            return "This resource is already booked for the selected time.";
+        }
+
+        String conflictSummary = activeConflicts.stream()
+                .map(existingBooking -> String.format(
+                        "%s booking from %s to %s",
+                        existingBooking.getStatus(),
+                        existingBooking.getStartTime(),
+                        existingBooking.getEndTime()
+                ))
+                .distinct()
+                .collect(java.util.stream.Collectors.joining("; "));
+
+        return "This resource is already booked for the selected time. Conflicts with " + conflictSummary + ".";
     }
 
     private void ensureAdminAccess(boolean isAdmin) {

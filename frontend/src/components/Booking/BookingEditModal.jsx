@@ -3,9 +3,10 @@ import { getBookingConflicts, updateBooking } from '../../services/bookingServic
 import { getResources } from '../../utils/api';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
 import {
+  findConflictingBooking,
   getAttendeeValidationMessage,
+  getNextAvailableSlot,
   getTimeRangeValidationMessage,
-  hasTimeOverlap,
   sanitizeExpectedAttendees,
   shouldCheckBookingConflict,
 } from '../../utils/bookingValidation';
@@ -136,6 +137,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
   const [attendeeError, setAttendeeError] = useState('');
   const [timeRangeError, setTimeRangeError] = useState('');
   const [bookingConflictWarning, setBookingConflictWarning] = useState('');
+  const [suggestedSlot, setSuggestedSlot] = useState(null);
   const [formData, setFormData] = useState(getInitialFormData(booking));
 
   useEffect(() => {
@@ -148,6 +150,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
     setAttendeeError('');
     setTimeRangeError('');
     setBookingConflictWarning('');
+    setSuggestedSlot(null);
   }, [booking, open]);
 
   useEffect(() => {
@@ -222,6 +225,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
         })
       ) {
         setBookingConflictWarning('');
+        setSuggestedSlot(null);
         return;
       }
 
@@ -231,27 +235,34 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
           bookingDate: formData.bookingDate,
         });
 
-        const conflictingBooking = (response.data || []).find((existingBooking) => {
-          if (String(existingBooking.id) === String(booking?.id)) {
-            return false;
-          }
-
-          return hasTimeOverlap({
-            startTime: formData.startTime,
-            endTime: formData.endTime,
-            existingStartTime: existingBooking.startTime,
-            existingEndTime: existingBooking.endTime,
-          });
+        const conflictingBooking = findConflictingBooking({
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          existingBookings: response.data || [],
+          ignoredBookingId: booking?.id,
         });
 
         setBookingConflictWarning(
           conflictingBooking
-            ? 'This time is already selected by another booking. Please choose a different start or end time.'
+            ? `Conflicts with ${conflictingBooking.status} booking from ${conflictingBooking.startTime} to ${conflictingBooking.endTime}.`
             : ''
+        );
+        setSuggestedSlot(
+          conflictingBooking
+            ? getNextAvailableSlot({
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                existingBookings: response.data || [],
+                availabilityStart: selectedResource?.availabilityStart || '',
+                availabilityEnd: selectedResource?.availabilityEnd || '',
+                ignoredBookingId: booking?.id,
+              })
+            : null
         );
       } catch (error) {
         console.error('Error checking booking conflicts:', error);
         setBookingConflictWarning('');
+        setSuggestedSlot(null);
       }
     };
 
@@ -259,6 +270,20 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
       checkBookingConflict();
     }
   }, [booking?.id, formData.bookingDate, formData.endTime, formData.startTime, open, selectedResource?.id]);
+
+  const applySuggestedSlot = () => {
+    if (!suggestedSlot) {
+      return;
+    }
+
+    setFormData((previousData) => ({
+      ...previousData,
+      startTime: suggestedSlot.startTime,
+      endTime: suggestedSlot.endTime,
+    }));
+    setBookingConflictWarning('');
+    setSuggestedSlot(null);
+  };
 
   if (!open || !booking) {
     return null;
@@ -468,6 +493,31 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                   {bookingConflictWarning}
                 </div>
               ) : null}
+              {bookingConflictWarning && suggestedSlot ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  Suggested next free slot: {suggestedSlot.startTime} - {suggestedSlot.endTime}
+                  <button
+                    type="button"
+                    onClick={applySuggestedSlot}
+                    style={{
+                      marginLeft: '0.75rem',
+                      padding: '0.42rem 0.7rem',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(59, 130, 246, 0.35)',
+                      background: 'rgba(59, 130, 246, 0.18)',
+                      color: '#dbeafe',
+                      cursor: 'pointer',
+                      fontWeight: '700',
+                    }}
+                  >
+                    Use suggestion
+                  </button>
+                </div>
+              ) : bookingConflictWarning ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  No later vacant slot is available within this resource's booking hours for the selected duration.
+                </div>
+              ) : null}
             </div>
 
             <div>
@@ -488,6 +538,15 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
               {bookingConflictWarning ? (
                 <div style={{ marginTop: '0.5rem', color: '#fca5a5', fontSize: '0.92rem' }}>
                   {bookingConflictWarning}
+                </div>
+              ) : null}
+              {bookingConflictWarning && suggestedSlot ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  Suggested next free slot: {suggestedSlot.startTime} - {suggestedSlot.endTime}
+                </div>
+              ) : bookingConflictWarning ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  No later vacant slot is available within this resource's booking hours for the selected duration.
                 </div>
               ) : null}
             </div>

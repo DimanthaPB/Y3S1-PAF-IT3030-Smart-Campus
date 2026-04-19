@@ -12,6 +12,7 @@ const pageStyles = {
     margin: '0 auto',
     color: '#f8fafc',
   },
+  
   heroCard: {
     border: '1px solid rgba(255,255,255,0.12)',
     borderRadius: '28px',
