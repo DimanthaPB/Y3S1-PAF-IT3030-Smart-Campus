@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 function BookingActionModal({
   open,
@@ -16,13 +16,6 @@ function BookingActionModal({
 }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (open) {
-      setReason('');
-      setError('');
-    }
-  }, [open]);
 
   if (!open) return null;
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { BellOff, Check, Settings2, Trash2, X } from 'lucide-react';
 import api from '../../utils/api';
 import './NotificationModal.css';
@@ -36,12 +36,7 @@ const NotificationModal = ({ onClose, setUnreadCount }) => {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  useEffect(() => {
-    fetchNotifications();
-    fetchPrefs();
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const { data } = await api.get('/users/me/notifications');
       setNotifications(data);
@@ -51,9 +46,9 @@ const NotificationModal = ({ onClose, setUnreadCount }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setUnreadCount]);
 
-  const fetchPrefs = async () => {
+  const fetchPrefs = useCallback(async () => {
     try {
       const { data } = await api.get('/users/me/preferences');
       setPrefs({
@@ -66,7 +61,12 @@ const NotificationModal = ({ onClose, setUnreadCount }) => {
     } finally {
       setPrefsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    fetchPrefs();
+  }, [fetchNotifications, fetchPrefs]);
 
   const markAsRead = async (id) => {
     try {

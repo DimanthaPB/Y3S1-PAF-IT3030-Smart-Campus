@@ -150,14 +150,14 @@ const Login = () => {
           </p>
 
           <div className="trust-grid">
-            {trustPoints.map(({ icon: Icon, title, text }) => (
-              <article key={title} className="trust-card">
+            {trustPoints.map((point) => (
+              <article key={point.title} className="trust-card">
                 <div className="trust-icon">
-                  <Icon size={22} />
+                  <point.icon size={22} />
                 </div>
                 <div>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
+                  <h3>{point.title}</h3>
+                  <p>{point.text}</p>
                 </div>
               </article>
             ))}

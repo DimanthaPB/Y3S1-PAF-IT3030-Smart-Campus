@@ -8,43 +8,36 @@ import './Navbar.css';
 
 const publicLinks = [
   { to: '/', label: 'Home' },
-  { to: '/about', label: 'About' },
-  { to: '/contact', label: 'Contact' },
-  { to: '/faq', label: 'FAQs' },
 ];
 
 const Navbar = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const notifRef = useRef();
+  const notifRef = useRef(null);
   const location = useLocation();
 
-  useEffect(() => {
-    setIsAuthenticated(!!localStorage.getItem('jwt_token'));
-    setIsAdmin(isAdminUser());
-    setIsAuthenticated(!!getStoredToken());
-    setMobileMenuOpen(false);
-    setIsNotifOpen(false);
-  }, [location]);
+  const isAuthenticated = !!getStoredToken();
+  const isAdmin = isAuthenticated && isAdminUser();
 
   const navigationLinks = useMemo(() => {
+    const links = [...publicLinks];
+
     if (isAuthenticated) {
-      return [
-        ...publicLinks,
-        { to: '/privacy', label: 'Privacy' },
-      ];
+      if (isAdmin) {
+        links.push({ to: '/admin/bookings', label: 'Admin Bookings' });
+        links.push({ to: '/resources', label: 'Resources' });
+      } else {
+        links.push({ to: '/bookings', label: 'My Bookings' });
+        links.push({ to: '/catalogue', label: 'Catalogue' });
+      }
     }
 
-    return publicLinks;
-  }, [isAuthenticated]);
+    return links;
+  }, [isAdmin, isAuthenticated]);
 
   const handleLogout = () => {
     clearStoredToken();
-    setIsAuthenticated(false);
-    setIsAdmin(false);
     window.location.href = '/';
   };
 
@@ -81,11 +74,6 @@ const Navbar = () => {
           {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
-          {/* ✅ ADD THIS */}
-        {isAuthenticated && isAdmin && <Link to="/resources">Resources</Link>}
-        {isAuthenticated && !isAdmin && <Link to="/bookings">My Bookings</Link>}
-        {isAuthenticated && isAdmin && <Link to="/admin/bookings">Admin Bookings</Link
-      </div>
         <div className={`navbar-links ${mobileMenuOpen ? 'open' : ''}`}>
           {navigationLinks.map((item) => (
             <Link

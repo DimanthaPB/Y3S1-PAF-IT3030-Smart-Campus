@@ -20,7 +20,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBookingConflict(BookingConflictException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.CONFLICT.value());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -54,13 +57,13 @@ public class GlobalExceptionHandler {
         }
 
         ex.getBindingResult().getGlobalErrors().forEach(error ->
-                errors.putIfAbsent(error.getObjectName(), error.getDefaultMessage()));
+                errors.putIfAbsent(error.getObjectName(), error.getDefaultMessage())
+        );
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", "Validation failed");
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("errors", errors);
-
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
@@ -69,27 +72,21 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = new LinkedHashMap<>();
 
         ex.getConstraintViolations().forEach(violation ->
-                errors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage()));
+                errors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage())
+        );
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", "Validation failed");
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("errors", errors);
-
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-    }
-
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, Object>> handleResponseStatusException(ResponseStatusException ex) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("message", ex.getReason());
-        return ResponseEntity.status(ex.getStatusCode()).body(body);
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("message", ex.getMessage());
+        body.put("message", ex.getMessage() == null ? "Unexpected error" : ex.getMessage());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 }

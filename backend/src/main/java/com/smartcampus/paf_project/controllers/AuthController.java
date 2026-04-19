@@ -70,7 +70,9 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        String token = jwtUtil.generateToken(authentication.getName());
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
+        String token = jwtUtil.generateToken(authentication.getName(), user.getRole().name());
         return ResponseEntity.ok(Map.of("token", token));
     }
 

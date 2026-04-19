@@ -1,15 +1,10 @@
-import React, { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { isAdminUser } from '../utils/auth';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   BellRing,
   CalendarClock,
   CheckCircle2,
-  ClipboardList,
   LockKeyhole,
   MapPinned,
   ShieldCheck,
@@ -80,280 +75,135 @@ const workflows = [
   },
 ];
 
-const Home = () => {
-  const navigate = useNavigate();
-  const isAdmin = isAdminUser();
+const Home = () => (
+  <div className="home-container">
+    <section className="hero-section animate-fade-in">
+      <div className="hero-shapes" aria-hidden="true">
+        <div className="shape shape-1"></div>
+        <div className="shape shape-2"></div>
+        <div className="shape shape-3"></div>
+      </div>
 
-  const featureCards = useMemo(() => {
-    if (isAdmin) {
-      return [
-        {
-          title: 'Manage Bookings',
-          description:
-            'Review pending requests, filter the queue, and act on approvals, rejections, or cancellations.',
-          iconClass: 'icon-blue',
-          onClick: () => navigate('/admin/bookings'),
-        },
-        {
-          title: 'Manage Resources',
-          description:
-            'Update facility availability, adjust capacities, and keep bookable resources ready for users.',
-          iconClass: 'icon-green',
-          onClick: () => navigate('/resources'),
-        },
-        {
-          title: 'Incident Management',
-          description:
-            'Report and track maintenance issues with real-time updates and notifications.',
-          iconClass: 'icon-purple',
-        },
-      ];
-    }
+      <div className="hero-content">
+        <div className="badge-pill">
+          <Sparkles size={16} />
+          IT3030 PAF 2026 - Smart Campus Operations Hub
+        </div>
 
-    return [
-      {
-        title: 'My Bookings',
-        description:
-          'Create and track your room, lab, and equipment requests from one clean booking workspace.',
-        iconClass: 'icon-blue',
-        onClick: () => navigate('/bookings'),
-      },
-      {
-        title: 'Preferences',
-        description:
-          'Customize your account experience, notification settings, and personal workspace preferences.',
-        iconClass: 'icon-green',
-        onClick: () => navigate('/preferences'),
-      },
-      {
-        title: 'Real-time Alerts',
-        description:
-          'Stay informed with our global notification system for all your campus activities.',
-        iconClass: 'icon-purple',
-      },
-    ];
-  }, [isAdmin, navigate]);
-
-  return (
-    <div className="home-container">
-      <div className="hero-section animate-fade-in">
-        <div className="hero-copy">
-          <div className="hero-kicker">
-            {isAdmin ? 'Admin Workspace' : 'User Workspace'}
-          </div>
         <h1 className="hero-title">
-          Welcome to <span className="highlight">SmartCampus Hub</span>
+          One place to run <span className="highlight">campus operations</span> with clarity.
         </h1>
+
         <p className="hero-subtitle">
-          {isAdmin
-            ? 'The central control point for booking operations, resource oversight, and fast campus coordination.'
-            : 'The central platform for managing your facility bookings, equipment access, and campus updates with state-of-the-art efficiency.'}
+          SmartCampus Hub brings together facility booking, asset visibility, maintenance ticketing,
+          notifications, and secure role-based access in a single modern web platform.
         </p>
+
+        <div className="hero-actions">
+          <Link to="/login" className="btn-primary hero-btn">
+            Launch Platform
+            <ArrowRight size={18} />
+          </Link>
+          <Link to="/about" className="btn-secondary hero-btn secondary-hero-btn">
+            Explore Modules
+          </Link>
         </div>
-        
-        <div className="features-grid">
-          {featureCards.map((card) => {
-            const sharedContent = (
-              <>
-                <div className={`feature-icon ${card.iconClass}`}></div>
-                <h3>{card.title}</h3>
-                <p>{card.description}</p>
-              </>
-            );
 
-            if (card.onClick) {
-              return (
-                <button
-                  key={card.title}
-                  type="button"
-                  className="glass-panel feature-card feature-card-button"
-                  onClick={card.onClick}
-                >
-                  {sharedContent}
-                </button>
-              );
-            }
+        <div className="hero-badges">
+          <span><ShieldCheck size={16} /> Spring Boot REST API</span>
+          <span><CheckCircle2 size={16} /> React Client App</span>
+          <span><Users size={16} /> Team-built Coursework</span>
+        </div>
+      </div>
+    </section>
 
-            return (
-              <div key={card.title} className="glass-panel feature-card">
-                {sharedContent}
+    <section className="stats-section">
+      <div className="glass-panel stats-grid">
+        {stats.map((stat) => (
+          <div key={stat.label} className="stat-card">
+            <h3>{stat.value}</h3>
+            <p>{stat.label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section className="features-section">
+      <div className="section-header">
+        <h2>Built around the real assignment scope</h2>
+        <p>
+          The homepage reflects the exact Smart Campus scenario from the brief instead of generic
+          placeholder marketing text.
+        </p>
+      </div>
+
+      <div className="features-grid">
+        {modules.map((module) => (
+          <article key={module.title} className="glass-panel feature-card">
+            <div className="feature-icon">
+              <module.icon size={28} />
+            </div>
+            <h3>{module.title}</h3>
+            <p>{module.description}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section className="spotlight-section">
+      <div className="glass-panel spotlight-panel">
+        <div className="spotlight-copy">
+          <p className="spotlight-label">Member 4 focus</p>
+          <h2>Notifications, roles, and secure sign-in are now part of the landing story.</h2>
+          <p>
+            Since your contribution centers on notifications and authorization improvements, the
+            homepage now surfaces those capabilities clearly for demos.
+          </p>
+
+          <div className="highlight-list">
+            {highlights.map((item) => (
+              <div key={item} className="highlight-item">
+                <LockKeyhole size={18} />
+                <span>{item}</span>
               </div>
-            );
-          })}
-
-  const handleIncidentCardClick = () => {
-    navigate('/tickets');
-  };
-
-  return (
-    <div className="home-container">
-      <section className="hero-section animate-fade-in">
-        <div className="hero-shapes" aria-hidden="true">
-          <div className="shape shape-1"></div>
-          <div className="shape shape-2"></div>
-          <div className="shape shape-3"></div>
-        </div>
-
-        <div className="hero-content">
-          <div className="badge-pill">
-            <Sparkles size={16} />
-            Smart Campus Operations Hub
-          </div>
-
-          <h1 className="hero-title">
-            One place to run <span className="highlight">campus operations</span> with clarity.
-          </h1>
-
-          <p className="hero-subtitle">
-            SmartCampus Hub brings together facility booking, asset visibility, maintenance ticketing,
-            notifications, and secure role-based access in a single modern web platform.
-          </p>
-
-          <div className="hero-actions">
-            <Link to="/login" className="btn-primary hero-btn">
-              Launch Platform
-              <ArrowRight size={18} />
-            </Link>
-            <Link to="/about" className="btn-secondary hero-btn secondary-hero-btn">
-              Explore Modules
-            </Link>
-          </div>
-
-          <div className="hero-badges">
-            <span><ShieldCheck size={16} /> Spring Boot REST API</span>
-            <span><CheckCircle2 size={16} /> React Client App</span>
-            <span><Users size={16} /> Team-built Coursework</span>
+            ))}
           </div>
         </div>
-      </section>
 
-      <section className="stats-section">
-        <div className="glass-panel stats-grid">
-          {stats.map((stat) => (
-            <div key={stat.label} className="stat-card">
-              <h3>{stat.value}</h3>
-              <p>{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="features-section">
-        <div className="section-header">
-          <h2>Built around the real assignment scope</h2>
-          <p>
-            The homepage now reflects the exact Smart Campus scenario from the brief instead of generic placeholder
-            marketing text.
-          </p>
-        </div>
-
-        <div className="features-grid">
-          {modules.map(({ icon: Icon, title, description }) => (
-            <article key={title} className="glass-panel feature-card">
-              <div className="feature-icon">
-                <Icon size={28} />
-              </div>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="spotlight-section">
-        <div className="glass-panel spotlight-panel">
-          <div className="spotlight-copy">
-            <p className="spotlight-label">Member 4 focus</p>
-            <h2>Notifications, roles, and secure sign-in are now part of the landing story.</h2>
-            <p>
-              Since your contribution centers on notifications and authorization improvements, the homepage now
-              surfaces those capabilities clearly so the system immediately communicates your team structure and your
-              ownership area during demos.
-            </p>
-
-            <div className="highlight-list">
-              {highlights.map((item) => (
-                <div key={item} className="highlight-item">
-                  <LockKeyhole size={18} />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
+        <div className="spotlight-card">
+          <div className="spotlight-metric">
+            <BellRing size={22} />
+            <span>Notification-ready experience</span>
           </div>
-          
-          <div
-            className="glass-panel feature-card"
-            role="button"
-            tabIndex={0}
-            onClick={handleIncidentCardClick}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleIncidentCardClick();
-              }
-            }}
-            style={{ cursor: 'pointer' }}
-            aria-label="Go to Incident Management tickets"
-          >
-            <div className="feature-icon icon-green"></div>
-            <h3>Incident Management</h3>
-            <p>Report and track maintenance issues with real-time updates and notifications.</p>
+          <ul className="spotlight-points">
+            <li>Booking approvals and rejections</li>
+            <li>Ticket status changes and technician updates</li>
+            <li>New comments and user preference controls</li>
+          </ul>
+        </div>
+      </div>
+    </section>
 
-          <div className="spotlight-card">
-            <div className="spotlight-metric">
-              <BellRing size={22} />
-              <span>Notification-ready experience</span>
-            </div>
-            <ul className="spotlight-points">
-              <li>Booking approvals and rejections</li>
-              <li>Ticket status changes and technician updates</li>
-              <li>New comments and user preference controls</li>
-            </ul>
+    <section className="workflow-section">
+      <div className="section-header">
+        <h2>How the platform flows</h2>
+        <p>
+          The experience is designed for everyday university operations, from finding a resource
+          to closing a maintenance issue with traceable updates.
+        </p>
+      </div>
+
+      <div className="workflow-grid">
+        {workflows.map((item) => (
+          <div key={item.step} className="glass-panel workflow-card">
+            <span className="workflow-step">{item.step}</span>
+            <h3>{item.title}</h3>
+            <p>{item.description}</p>
           </div>
-        </div>
-      </section>
-
-      <section className="workflow-section">
-        <div className="section-header">
-          <h2>How the platform flows</h2>
-          <p>
-            The experience is designed for everyday university operations, from finding a resource to closing a
-            maintenance issue with traceable updates.
-          </p>
-        </div>
-
-        <div className="workflow-grid">
-          {workflows.map((item) => (
-            <div key={item.step} className="glass-panel workflow-card">
-              <span className="workflow-step">{item.step}</span>
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="cta-section">
-        <div className="cta-panel">
-          <p className="spotlight-label">Ready for demos and expansion</p>
-          <h2>A stronger homepage for the common project foundation</h2>
-          <p>
-            This gives the whole team a more credible first screen while you continue building the module-specific
-            features and shared project files.
-          </p>
-          <div className="cta-actions">
-            <Link to="/login" className="btn-primary cta-btn">
-              Sign In
-            </Link>
-            <Link to="/contact" className="btn-secondary cta-btn secondary-hero-btn">
-              Contact Team
-            </Link>
-          </div>
-          
-        </div>
-      </section>
-    </div>
-  );
-};
+        ))}
+      </div>
+    </section>
+  </div>
+);
 
 export default Home;

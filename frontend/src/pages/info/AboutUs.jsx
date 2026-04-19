@@ -64,13 +64,13 @@ const AboutUs = () => {
 
         <h2>Design principles</h2>
         <div className="info-card-grid">
-          {pillars.map(({ icon: Icon, title, description }) => (
-            <article key={title} className="info-card">
+          {pillars.map((pillar) => (
+            <article key={pillar.title} className="info-card">
               <div className="info-card-icon">
-                <Icon size={24} />
+                <pillar.icon size={24} />
               </div>
-              <h3>{title}</h3>
-              <p>{description}</p>
+              <h3>{pillar.title}</h3>
+              <p>{pillar.description}</p>
             </article>
           ))}
         </div>

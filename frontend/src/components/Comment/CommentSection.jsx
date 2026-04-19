@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 
 function CommentSection({ ticketId, currentUser = "User1" }) {
@@ -7,7 +7,7 @@ function CommentSection({ ticketId, currentUser = "User1" }) {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingText, setEditingText] = useState("");
 
-  const fetchComments = () => {
+  const fetchComments = useCallback(() => {
     axios
       .get(`http://localhost:8080/api/tickets/${ticketId}/comments`)
       .then((res) => {
@@ -16,11 +16,11 @@ function CommentSection({ ticketId, currentUser = "User1" }) {
       .catch((err) => {
         console.error("Comment fetch error:", err);
       });
-  };
+  }, [ticketId]);
 
   useEffect(() => {
     fetchComments();
-  }, [ticketId]);
+  }, [fetchComments]);
 
   const handleAddComment = async () => {
     if (!newCommentText.trim()) {

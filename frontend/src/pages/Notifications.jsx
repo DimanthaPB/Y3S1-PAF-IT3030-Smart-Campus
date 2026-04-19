@@ -1,66 +1,62 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-// හැම Request එකකදිම Backend එකට Session Cookies යවන්න කියනවා (අනිවාර්යයි)
 axios.defaults.withCredentials = true;
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  
-  // Hardcode කරපු ඒවා අයින් කළා
-  const [email, setEmail] = useState(''); 
+  const [email, setEmail] = useState('');
   const [userName, setUserName] = useState('');
 
   const API_URL = 'http://localhost:8080/api/notifications';
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // පිටුව ලෝඩ් වෙද්දිම කවුද ලොග් වෙලා ඉන්නේ කියලා බලනවා
-    checkUserLogin();
-  }, []);
-
-  const checkUserLogin = async () => {
-    try {
-      // අර කලින් සුදු පිටුවට ගිය ලින්ක් එකෙන් අපි ඇතුලෙන්ම ඩේටා අදිනවා
-      const response = await axios.get('http://localhost:8080/api/auth/success');
-      if (response.data && response.data.email) {
-        setEmail(response.data.email);
-        setUserName(response.data.name);
-        fetchNotifications(response.data.email); // ඊමේල් එක ආවම විතරක් Notifications අදිනවා
-      } else {
-        navigate('/'); // ලොග් වෙලා නැත්නම් Home එකට විසි කරනවා
-      }
-    } catch (error) {
-      console.error("User not logged in");
-      navigate('/'); 
-    }
-  };
 
   const fetchNotifications = async (userEmail) => {
     try {
       const response = await axios.get(`${API_URL}?email=${userEmail}`);
       setNotifications(response.data);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error('Error fetching data:', error);
     }
   };
+
+  const checkUserLogin = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/auth/success');
+      if (response.data && response.data.email) {
+        setEmail(response.data.email);
+        setUserName(response.data.name);
+        fetchNotifications(response.data.email);
+      } else {
+        navigate('/');
+      }
+    } catch {
+      console.error('User not logged in');
+      navigate('/');
+    }
+  };
+
+  useEffect(() => {
+    checkUserLogin();
+  }, []);
 
   const addNotification = async (e) => {
     e.preventDefault();
     try {
       await axios.post(API_URL, {
         recipientEmail: email,
-        title: title,
-        message: message
+        title,
+        message,
       });
       setTitle('');
       setMessage('');
       fetchNotifications(email);
     } catch (error) {
-      console.error("Error saving data:", error);
+      console.error('Error saving data:', error);
     }
   };
 
@@ -69,7 +65,7 @@ export default function Notifications() {
       await axios.put(`${API_URL}/${id}/read`);
       fetchNotifications(email);
     } catch (error) {
-      console.error("Error updating:", error);
+      console.error('Error updating:', error);
     }
   };
 
@@ -78,30 +74,33 @@ export default function Notifications() {
       await axios.delete(`${API_URL}/${id}`);
       fetchNotifications(email);
     } catch (error) {
-      console.error("Error deleting:", error);
+      console.error('Error deleting:', error);
     }
   };
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      
-      {/* ලොග් වුණු කෙනාගේ විස්තර පෙන්වීම */}
       <div style={{ backgroundColor: '#e6f7ff', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0 }}>Hello, {userName}! 👋</h2>
+        <h2 style={{ margin: 0 }}>Hello, {userName}!</h2>
         <p style={{ margin: '5px 0 0 0', color: 'gray' }}>Logged in as: {email}</p>
       </div>
 
       <form onSubmit={addNotification} style={{ marginBottom: '30px', padding: '15px', border: '1px solid #ccc', borderRadius: '8px' }}>
         <h3>Send New Notification</h3>
-        <input 
-          type="text" placeholder="Title" value={title} required
-          onChange={(e) => setTitle(e.target.value)} 
-          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '100%', maxWidth: '400px' }} 
+        <input
+          type="text"
+          placeholder="Title"
+          value={title}
+          required
+          onChange={(e) => setTitle(e.target.value)}
+          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '100%', maxWidth: '400px' }}
         />
-        <textarea 
-          placeholder="Message" value={message} required
-          onChange={(e) => setMessage(e.target.value)} 
-          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '100%', maxWidth: '400px', height: '80px' }} 
+        <textarea
+          placeholder="Message"
+          value={message}
+          required
+          onChange={(e) => setMessage(e.target.value)}
+          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '100%', maxWidth: '400px', height: '80px' }}
         />
         <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
           Send Notification
@@ -112,16 +111,23 @@ export default function Notifications() {
       {notifications.length === 0 ? <p>No notifications found.</p> : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {notifications.map((notif) => (
-            <li key={notif.id} style={{ 
-              border: '1px solid #ddd', padding: '15px', marginBottom: '10px', borderRadius: '8px',
-              backgroundColor: notif.read ? '#f9f9f9' : '#ffffff',
-              borderLeft: notif.read ? '5px solid #ccc' : '5px solid #2196F3'
-            }}>
+            <li
+              key={notif.id}
+              style={{
+                border: '1px solid #ddd',
+                padding: '15px',
+                marginBottom: '10px',
+                borderRadius: '8px',
+                backgroundColor: notif.read ? '#f9f9f9' : '#ffffff',
+                borderLeft: notif.read ? '5px solid #ccc' : '5px solid #2196F3',
+              }}
+            >
               <h4 style={{ margin: '0 0 10px 0' }}>
-                {notif.title} {!notif.read && <span style={{ color: 'red', fontSize: '12px', marginLeft: '10px' }}>NEW</span>}
+                {notif.title}
+                {!notif.read && <span style={{ color: 'red', fontSize: '12px', marginLeft: '10px' }}>NEW</span>}
               </h4>
               <p>{notif.message}</p>
-              
+
               {!notif.read && (
                 <button onClick={() => markAsRead(notif.id)} style={{ marginRight: '10px', padding: '5px 10px', cursor: 'pointer' }}>
                   Mark as Read
