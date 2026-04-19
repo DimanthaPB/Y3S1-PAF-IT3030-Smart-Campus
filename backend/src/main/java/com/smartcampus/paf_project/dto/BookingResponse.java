@@ -5,6 +5,7 @@ import com.smartcampus.paf_project.models.BookingStatus;
 import com.smartcampus.paf_project.models.Resource;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 public record BookingResponse(
@@ -19,9 +20,15 @@ public record BookingResponse(
         LocalTime endTime,
         String purpose,
         Integer expectedAttendees,
+        String approvalReason,
         String rejectionReason,
         String cancelReason,
-        BookingStatus status
+        String cancelledBy,
+        String cancelledByRole,
+        LocalDateTime cancelledAt,
+        BookingStatus status,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
     public static BookingResponse from(Booking booking, String userName) {
         return new BookingResponse(
@@ -36,9 +43,15 @@ public record BookingResponse(
                 booking.getEndTime(),
                 booking.getPurpose(),
                 booking.getExpectedAttendees(),
+                booking.getApprovalReason(),
                 booking.getRejectionReason(),
                 booking.getCancelReason(),
-                booking.getStatus()
+                booking.getCancelledBy(),
+                booking.getCancelledByRole(),
+                booking.getCancelledAt(),
+                booking.getStatus(),
+                booking.getCreatedAt(),
+                booking.getUpdatedAt()
         );
     }
 }

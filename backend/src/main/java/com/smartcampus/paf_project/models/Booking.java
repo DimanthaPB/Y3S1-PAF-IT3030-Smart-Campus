@@ -2,6 +2,7 @@ package com.smartcampus.paf_project.models;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Entity
@@ -30,9 +31,21 @@ public class Booking {
 
     private Integer expectedAttendees;
 
+    private String approvalReason;
+
     private String rejectionReason;
 
     private String cancelReason;
+
+    private String cancelledBy;
+
+    private String cancelledByRole;
+
+    private LocalDateTime cancelledAt;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 
     @Enumerated(EnumType.STRING)
     private BookingStatus status;
@@ -145,11 +158,73 @@ public class Booking {
         this.cancelReason = cancelReason;
     }
 
+    public String getCancelledBy() {
+        return cancelledBy;
+    }
+
+    public void setCancelledBy(String cancelledBy) {
+        this.cancelledBy = cancelledBy;
+    }
+
+    public String getCancelledByRole() {
+        return cancelledByRole;
+    }
+
+    public void setCancelledByRole(String cancelledByRole) {
+        this.cancelledByRole = cancelledByRole;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
+    public String getApprovalReason() {
+        return approvalReason;
+    }
+
+    public void setApprovalReason(String approvalReason) {
+        this.approvalReason = approvalReason;
+    }
+
     public BookingStatus getStatus() {
         return status;
     }
 
     public void setStatus(BookingStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    @PrePersist
+    public void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

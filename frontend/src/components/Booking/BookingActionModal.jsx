@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function BookingActionModal({
   open,
@@ -11,11 +11,21 @@ function BookingActionModal({
   reasonPlaceholder = 'Enter a reason',
   confirmTone = 'default',
   busy = false,
+  busyLabel = 'Please wait...',
+  externalError = '',
+  children,
   onClose,
   onConfirm,
 }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setReason('');
+      setError('');
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -88,6 +98,8 @@ function BookingActionModal({
           </p>
         ) : null}
 
+        {children ? <div style={{ marginTop: '1.25rem' }}>{children}</div> : null}
+
         {requireReason ? (
           <div style={{ marginTop: '1.25rem' }}>
             <label
@@ -127,6 +139,15 @@ function BookingActionModal({
                 {error}
               </div>
             ) : null}
+            {externalError ? (
+              <div style={{ marginTop: '0.6rem', color: '#fca5a5', fontSize: '0.92rem' }}>
+                {externalError}
+              </div>
+            ) : null}
+          </div>
+        ) : externalError ? (
+          <div style={{ marginTop: '1rem', color: '#fca5a5', fontSize: '0.92rem' }}>
+            {externalError}
           </div>
         ) : null}
 
@@ -162,7 +183,7 @@ function BookingActionModal({
               opacity: busy ? 0.65 : 1,
             }}
           >
-            {busy ? 'Please wait...' : confirmLabel}
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>

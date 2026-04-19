@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +55,8 @@ class BookingServiceTest {
         ownBooking.setFacilityName("Lab A");
         ownBooking.setBookingDate(LocalDate.of(2026, 4, 20));
         ownBooking.setStatus(BookingStatus.PENDING);
+        ownBooking.setCreatedAt(LocalDateTime.of(2026, 4, 19, 9, 0));
+        ownBooking.setUpdatedAt(LocalDateTime.of(2026, 4, 19, 9, 0));
 
         otherBooking = new Booking();
         otherBooking.setId(2L);
@@ -61,6 +64,8 @@ class BookingServiceTest {
         otherBooking.setFacilityName("Hall B");
         otherBooking.setBookingDate(LocalDate.of(2026, 4, 21));
         otherBooking.setStatus(BookingStatus.APPROVED);
+        otherBooking.setCreatedAt(LocalDateTime.of(2026, 4, 19, 10, 0));
+        otherBooking.setUpdatedAt(LocalDateTime.of(2026, 4, 19, 11, 0));
     }
 
     @Test
@@ -101,7 +106,7 @@ class BookingServiceTest {
     void nonAdminCannotApproveBookings() {
         ResponseStatusException ex = assertThrows(
                 ResponseStatusException.class,
-                () -> bookingService.approveBooking(1L, false, "student1@example.com")
+                () -> bookingService.approveBooking(1L, "Looks good", false, "student1@example.com")
         );
 
         assertEquals(403, ex.getStatusCode().value());
@@ -113,10 +118,25 @@ class BookingServiceTest {
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(ownBooking));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Booking result = bookingService.approveBooking(1L, true, "admin@example.com");
+        Booking result = bookingService.approveBooking(1L, "Approved for the requested use", true, "admin@example.com");
 
         assertEquals(BookingStatus.APPROVED, result.getStatus());
+        assertEquals("Approved for the requested use", result.getApprovalReason());
         verify(bookingRepository).save(ownBooking);
+    }
+
+    @Test
+    void approveBookingRequiresReason() {
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(ownBooking));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.approveBooking(1L, "   ", true, "admin@example.com")
+        );
+
+        assertEquals(400, ex.getStatusCode().value());
+        assertEquals("Approval reason is required.", ex.getReason());
+        verify(bookingRepository, never()).save(any());
     }
 
     @Test
@@ -145,6 +165,8 @@ class BookingServiceTest {
 
         assertEquals("student1@example.com", response.userEmail());
         assertEquals("Student One", response.userName());
+        assertEquals(ownBooking.getCreatedAt(), response.createdAt());
+        assertEquals(ownBooking.getUpdatedAt(), response.updatedAt());
     }
 
     @Test
@@ -283,6 +305,8 @@ class BookingServiceTest {
 
         assertEquals(BookingStatus.CANCELLED, result.getStatus());
         assertEquals("No longer needed", result.getCancelReason());
+        assertEquals("student1@example.com", result.getCancelledBy());
+        assertEquals("USER", result.getCancelledByRole());
     }
 
     @Test

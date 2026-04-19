@@ -2,6 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { getBookingConflicts, updateBooking } from '../../services/bookingService';
 import { getResources } from '../../utils/api';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
+import {
+  findConflictingBooking,
+  getAttendeeValidationMessage,
+  getNextAvailableSlot,
+  getTimeRangeValidationMessage,
+  sanitizeExpectedAttendees,
+  shouldCheckBookingConflict,
+} from '../../utils/bookingValidation';
 
 const modalStyles = {
   backdrop: {
@@ -116,6 +124,11 @@ function getInitialFormData(booking) {
   };
 }
 
+const selectOptionStyles = {
+  backgroundColor: '#0f172a',
+  color: '#ffffff',
+};
+
 function BookingEditModal({ booking, open, onClose, onSaved }) {
   const [resources, setResources] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
@@ -124,6 +137,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
   const [attendeeError, setAttendeeError] = useState('');
   const [timeRangeError, setTimeRangeError] = useState('');
   const [bookingConflictWarning, setBookingConflictWarning] = useState('');
+  const [suggestedSlot, setSuggestedSlot] = useState(null);
   const [formData, setFormData] = useState(getInitialFormData(booking));
 
   useEffect(() => {
@@ -136,6 +150,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
     setAttendeeError('');
     setTimeRangeError('');
     setBookingConflictWarning('');
+    setSuggestedSlot(null);
   }, [booking, open]);
 
   useEffect(() => {
@@ -185,47 +200,32 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
   const selectedResourceCapacity = Number(selectedResource?.capacity) || null;
 
   useEffect(() => {
-    const attendeeCount = Number(formData.expectedAttendees);
-
-    if (!formData.expectedAttendees || !selectedResourceCapacity) {
-      setAttendeeError('');
-      return;
-    }
-
-    if (attendeeCount > selectedResourceCapacity) {
-      setAttendeeError(
-        `Attendee count exceeded. Maximum allowed for this resource is ${selectedResourceCapacity}.`
-      );
-      return;
-    }
-
-    setAttendeeError('');
+    setAttendeeError(
+      getAttendeeValidationMessage(formData.expectedAttendees, selectedResourceCapacity)
+    );
   }, [formData.expectedAttendees, selectedResourceCapacity]);
 
   useEffect(() => {
-    if (!formData.startTime || !formData.endTime) {
-      setTimeRangeError('');
-      return;
-    }
-
-    if (formData.startTime >= formData.endTime) {
-      setTimeRangeError('End time must be later than start time.');
-      return;
-    }
-
-    setTimeRangeError('');
+    setTimeRangeError(
+      getTimeRangeValidationMessage({
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+      })
+    );
   }, [formData.endTime, formData.startTime]);
 
   useEffect(() => {
     const checkBookingConflict = async () => {
       if (
-        !selectedResource?.id ||
-        !formData.bookingDate ||
-        !formData.startTime ||
-        !formData.endTime ||
-        formData.startTime >= formData.endTime
+        !shouldCheckBookingConflict({
+          resourceId: selectedResource?.id,
+          bookingDate: formData.bookingDate,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+        })
       ) {
         setBookingConflictWarning('');
+        setSuggestedSlot(null);
         return;
       }
 
@@ -235,27 +235,34 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
           bookingDate: formData.bookingDate,
         });
 
-        const conflictingBooking = (response.data || []).find((existingBooking) => {
-          if (String(existingBooking.id) === String(booking?.id)) {
-            return false;
-          }
-
-          return (
-            existingBooking.startTime &&
-            existingBooking.endTime &&
-            formData.startTime < existingBooking.endTime &&
-            formData.endTime > existingBooking.startTime
-          );
+        const conflictingBooking = findConflictingBooking({
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          existingBookings: response.data || [],
+          ignoredBookingId: booking?.id,
         });
 
         setBookingConflictWarning(
           conflictingBooking
-            ? 'This time is already selected by another booking. Please choose a different start or end time.'
+            ? `Conflicts with ${conflictingBooking.status} booking from ${conflictingBooking.startTime} to ${conflictingBooking.endTime}.`
             : ''
+        );
+        setSuggestedSlot(
+          conflictingBooking
+            ? getNextAvailableSlot({
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                existingBookings: response.data || [],
+                availabilityStart: selectedResource?.availabilityStart || '',
+                availabilityEnd: selectedResource?.availabilityEnd || '',
+                ignoredBookingId: booking?.id,
+              })
+            : null
         );
       } catch (error) {
         console.error('Error checking booking conflicts:', error);
         setBookingConflictWarning('');
+        setSuggestedSlot(null);
       }
     };
 
@@ -263,6 +270,20 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
       checkBookingConflict();
     }
   }, [booking?.id, formData.bookingDate, formData.endTime, formData.startTime, open, selectedResource?.id]);
+
+  const applySuggestedSlot = () => {
+    if (!suggestedSlot) {
+      return;
+    }
+
+    setFormData((previousData) => ({
+      ...previousData,
+      startTime: suggestedSlot.startTime,
+      endTime: suggestedSlot.endTime,
+    }));
+    setBookingConflictWarning('');
+    setSuggestedSlot(null);
+  };
 
   if (!open || !booking) {
     return null;
@@ -272,7 +293,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
     const { name, value } = event.target;
     const sanitizedValue =
       name === 'expectedAttendees'
-        ? value.replace(/[^0-9]/g, '').replace(/^0+/, '')
+        ? sanitizeExpectedAttendees(value)
         : value;
 
     setFeedback(null);
@@ -329,7 +350,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
       setBusy(true);
       setFeedback(null);
       const response = await updateBooking(booking.id, bookingPayload);
-      await onSaved?.(response.data);
+      await onSaved?.({ type: 'update', booking: response.data });
       onClose?.();
     } catch (error) {
       console.error('Failed to update booking:', error);
@@ -383,11 +404,11 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                 disabled={resourcesLoading || resourceTypes.length === 0 || busy}
                 style={modalStyles.select}
               >
-                <option value="" disabled hidden>
+                <option value="" disabled hidden style={selectOptionStyles}>
                   {resourcesLoading ? 'Loading resource types...' : 'Select a resource type'}
                 </option>
                 {resourceTypes.map((resourceType) => (
-                  <option key={resourceType} value={resourceType}>
+                  <option key={resourceType} value={resourceType} style={selectOptionStyles}>
                     {resourceType}
                   </option>
                 ))}
@@ -403,7 +424,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                 disabled={resourcesLoading || !formData.resourceType || busy}
                 style={modalStyles.select}
               >
-                <option value="" disabled hidden>
+                <option value="" disabled hidden style={selectOptionStyles}>
                   {resourcesLoading
                     ? 'Loading resources...'
                     : !formData.resourceType
@@ -411,7 +432,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                     : 'Select a resource'}
                 </option>
                 {activeResources.map((resource) => (
-                  <option key={resource.id} value={resource.id}>
+                  <option key={resource.id} value={resource.id} style={selectOptionStyles}>
                     {resource.name} (ID: {resource.id})
                   </option>
                 ))}
@@ -472,6 +493,31 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                   {bookingConflictWarning}
                 </div>
               ) : null}
+              {bookingConflictWarning && suggestedSlot ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  Suggested next free slot: {suggestedSlot.startTime} - {suggestedSlot.endTime}
+                  <button
+                    type="button"
+                    onClick={applySuggestedSlot}
+                    style={{
+                      marginLeft: '0.75rem',
+                      padding: '0.42rem 0.7rem',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(59, 130, 246, 0.35)',
+                      background: 'rgba(59, 130, 246, 0.18)',
+                      color: '#dbeafe',
+                      cursor: 'pointer',
+                      fontWeight: '700',
+                    }}
+                  >
+                    Use suggestion
+                  </button>
+                </div>
+              ) : bookingConflictWarning ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  No later vacant slot is available within this resource's booking hours for the selected duration.
+                </div>
+              ) : null}
             </div>
 
             <div>
@@ -492,6 +538,15 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
               {bookingConflictWarning ? (
                 <div style={{ marginTop: '0.5rem', color: '#fca5a5', fontSize: '0.92rem' }}>
                   {bookingConflictWarning}
+                </div>
+              ) : null}
+              {bookingConflictWarning && suggestedSlot ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  Suggested next free slot: {suggestedSlot.startTime} - {suggestedSlot.endTime}
+                </div>
+              ) : bookingConflictWarning ? (
+                <div style={{ marginTop: '0.5rem', color: '#bfdbfe', fontSize: '0.92rem', lineHeight: '1.6' }}>
+                  No later vacant slot is available within this resource's booking hours for the selected duration.
                 </div>
               ) : null}
             </div>

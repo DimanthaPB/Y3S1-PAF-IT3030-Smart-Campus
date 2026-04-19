@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -73,11 +74,15 @@ public class BookingService {
         );
 
         if (hasConflict) {
-            throw new BookingConflictException("This resource is already booked for the selected time.");
+            throw new BookingConflictException(buildConflictMessage(conflictingBookings));
         }
 
         booking.setBookedBy(currentUserEmail);
         booking.setStatus(BookingStatus.PENDING);
+        if (booking.getCreatedAt() == null) {
+            booking.setCreatedAt(LocalDateTime.now());
+        }
+        booking.setUpdatedAt(LocalDateTime.now());
 
         Booking savedBooking = bookingRepository.save(booking);
         notifyAdminsAboutBookingIfAvailable(
@@ -111,8 +116,13 @@ public class BookingService {
         existingBooking.setEndTime(updatedBooking.getEndTime());
         existingBooking.setPurpose(updatedBooking.getPurpose().trim());
         existingBooking.setExpectedAttendees(updatedBooking.getExpectedAttendees());
+        existingBooking.setApprovalReason(null);
         existingBooking.setRejectionReason(null);
         existingBooking.setCancelReason(null);
+        existingBooking.setCancelledBy(null);
+        existingBooking.setCancelledByRole(null);
+        existingBooking.setCancelledAt(null);
+        existingBooking.setUpdatedAt(LocalDateTime.now());
 
         return bookingRepository.save(existingBooking);
     }
@@ -194,7 +204,7 @@ public class BookingService {
         return bookingRepository.findByFacilityNameAndBookingDate(facilityName, bookingDate);
     }
 
-    public Booking approveBooking(Long id, boolean isAdmin, String currentUserEmail) {
+    public Booking approveBooking(Long id, String approvalReason, boolean isAdmin, String currentUserEmail) {
         ensureAdminAccess(isAdmin);
         Booking booking = getBookingById(id, isAdmin, currentUserEmail);
 
@@ -202,7 +212,19 @@ public class BookingService {
             throw new RuntimeException("Only PENDING bookings can be approved.");
         }
 
+        if (approvalReason == null || approvalReason.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Approval reason is required.");
+        }
+
         booking.setStatus(BookingStatus.APPROVED);
+        booking.setApprovalReason(approvalReason.trim());
+        booking.setRejectionReason(null);
+        booking.setCancelReason(null);
+        booking.setCancelledBy(null);
+        booking.setCancelledByRole(null);
+        booking.setCancelledAt(null);
+        booking.setUpdatedAt(LocalDateTime.now());
+        return bookingRepository.save(booking);
         Booking savedBooking = bookingRepository.save(booking);
         notifyBookingEventIfAvailable(
                 savedBooking.getBookedBy(),
@@ -225,7 +247,14 @@ public class BookingService {
         }
 
         booking.setStatus(BookingStatus.REJECTED);
+        booking.setApprovalReason(null);
         booking.setRejectionReason(rejectionReason.trim());
+        booking.setCancelReason(null);
+        booking.setCancelledBy(null);
+        booking.setCancelledByRole(null);
+        booking.setCancelledAt(null);
+        booking.setUpdatedAt(LocalDateTime.now());
+        return bookingRepository.save(booking);
         Booking savedBooking = bookingRepository.save(booking);
         notifyBookingEventIfAvailable(
                 savedBooking.getBookedBy(),
@@ -248,6 +277,11 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelReason(cancelReason.trim());
+        booking.setCancelledBy(currentUserEmail);
+        booking.setCancelledByRole(isAdmin ? "ADMIN" : "USER");
+        booking.setCancelledAt(LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
+        return bookingRepository.save(booking);
         Booking savedBooking = bookingRepository.save(booking);
         notifyBookingEventIfAvailable(
                 savedBooking.getBookedBy(),
@@ -353,8 +387,40 @@ public class BookingService {
         );
 
         if (hasConflict) {
-            throw new BookingConflictException("This resource is already booked for the selected time.");
+            List<Booking> activeConflicts = conflictingBookings.stream()
+                    .filter(existingBooking ->
+                            !existingBooking.getId().equals(bookingIdToIgnore) &&
+                                    (existingBooking.getStatus() == BookingStatus.PENDING ||
+                                            existingBooking.getStatus() == BookingStatus.APPROVED)
+                    )
+                    .toList();
+            throw new BookingConflictException(buildConflictMessage(activeConflicts));
         }
+    }
+
+    private String buildConflictMessage(List<Booking> conflictingBookings) {
+        List<Booking> activeConflicts = conflictingBookings.stream()
+                .filter(existingBooking ->
+                        existingBooking.getStatus() == BookingStatus.PENDING ||
+                                existingBooking.getStatus() == BookingStatus.APPROVED
+                )
+                .toList();
+
+        if (activeConflicts.isEmpty()) {
+            return "This resource is already booked for the selected time.";
+        }
+
+        String conflictSummary = activeConflicts.stream()
+                .map(existingBooking -> String.format(
+                        "%s booking from %s to %s",
+                        existingBooking.getStatus(),
+                        existingBooking.getStartTime(),
+                        existingBooking.getEndTime()
+                ))
+                .distinct()
+                .collect(java.util.stream.Collectors.joining("; "));
+
+        return "This resource is already booked for the selected time. Conflicts with " + conflictSummary + ".";
     }
 
     private void ensureAdminAccess(boolean isAdmin) {
