@@ -39,4 +39,19 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// -------------------- RESOURCE APIs --------------------
+
+export const getResources = () => api.get("/resources");
+
+export const getResourceById = (id) => api.get(`/resources/${id}`);
+
+export const createResource = (data) => api.post("/resources", data);
+
+export const updateResource = (id, data) => api.put(`/resources/${id}`, data);
+
+export const deleteResource = (id) => api.delete(`/resources/${id}`);
+
+export const searchResources = (params) =>
+  api.get("/resources/search", { params });
+
 export default api;

@@ -13,7 +13,9 @@ export default function Navbar() {
       <div>
         <Link to="/" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Home</Link>
         <Link to="/notifications" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Notifications</Link>
-        
+        <Link to="/resources" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>
+        Resources
+        </Link>
         <button onClick={handleLogout} style={{ 
           backgroundColor: '#f44336', color: 'white', border: 'none', 
           padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' 

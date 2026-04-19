@@ -39,14 +39,14 @@ const ContactUs = () => {
 
       <section className="contact-grid">
         <div className="contact-info-block">
-          {contacts.map(({ icon: Icon, title, lines }) => (
-            <article key={title} className="glass-panel contact-method">
+          {contacts.map((contact) => (
+            <article key={contact.title} className="glass-panel contact-method">
               <div className="contact-icon">
-                <Icon size={22} />
+                <contact.icon size={22} />
               </div>
               <div>
-                <h3>{title}</h3>
-                {lines.map((line) => (
+                <h3>{contact.title}</h3>
+                {contact.lines.map((line) => (
                   <p key={line}>{line}</p>
                 ))}
               </div>

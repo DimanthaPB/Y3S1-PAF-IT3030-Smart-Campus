@@ -2,44 +2,46 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, Info, LogOut, Menu, User, X } from 'lucide-react';
 import NotificationModal from '../Notification/NotificationModal';
+import { getCurrentUserRole } from '../../utils/auth';
 import { clearStoredToken, getStoredToken } from '../../utils/api';
 import './Navbar.css';
 
 const publicLinks = [
   { to: '/', label: 'Home' },
-  { to: '/about', label: 'About' },
-  { to: '/contact', label: 'Contact' },
-  { to: '/faq', label: 'FAQs' },
 ];
 
 const Navbar = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const notifRef = useRef();
+  const notifRef = useRef(null);
   const location = useLocation();
 
-  useEffect(() => {
-    setIsAuthenticated(!!getStoredToken());
-    setMobileMenuOpen(false);
-    setIsNotifOpen(false);
-  }, [location]);
+  const isAuthenticated = !!getStoredToken();
+  const currentRole = isAuthenticated ? getCurrentUserRole() : '';
+  const isAdmin = currentRole === 'ADMIN';
+  const isStandardUser = currentRole === 'USER';
 
   const navigationLinks = useMemo(() => {
+    const links = [...publicLinks];
+
     if (isAuthenticated) {
-      return [
-        ...publicLinks,
-        { to: '/privacy', label: 'Privacy' },
-      ];
+      if (isAdmin) {
+        links.push({ to: '/admin/bookings', label: 'Admin Bookings' });
+        links.push({ to: '/resources', label: 'Resources' });
+        links.push({ to: '/tech/tickets', label: 'Admin Tickets' });
+      } else if (isStandardUser) {
+        links.push({ to: '/bookings', label: 'My Bookings' });
+        links.push({ to: '/catalogue', label: 'Catalogue' });
+        links.push({ to: '/tickets', label: 'Tickets' });
+      }
     }
 
-    return publicLinks;
-  }, [isAuthenticated]);
+    return links;
+  }, [isAdmin, isAuthenticated, isStandardUser]);
 
   const handleLogout = () => {
     clearStoredToken();
-    setIsAuthenticated(false);
     window.location.href = '/';
   };
 

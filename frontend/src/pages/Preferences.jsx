@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import './Preferences.css';
@@ -10,10 +11,6 @@ const Preferences = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    fetchPrefs();
-  }, []);
 
   const fetchPrefs = async () => {
     try {
@@ -29,6 +26,10 @@ const Preferences = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPrefs();
+  }, []);
 
   const handleToggle = (key) => {
     setPrefs(prev => ({ ...prev, [key]: !prev[key] }));
