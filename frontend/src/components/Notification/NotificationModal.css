@@ -97,10 +97,16 @@
   justify-content: space-between;
   gap: 12px;
   transition: background 0.2s;
+  cursor: pointer;
 }
 
 .notif-item:hover {
   background: #1a2a42;
+}
+
+.notif-item:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.9);
+  outline-offset: -2px;
 }
 
 .notif-item.unread {

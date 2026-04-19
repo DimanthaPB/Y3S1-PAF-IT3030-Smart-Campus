@@ -150,39 +150,6 @@ const Home = () => (
       </div>
     </section>
 
-    <section className="spotlight-section">
-      <div className="glass-panel spotlight-panel">
-        <div className="spotlight-copy">
-          <p className="spotlight-label">Member 4 focus</p>
-          <h2>Notifications, roles, and secure sign-in are now part of the landing story.</h2>
-          <p>
-            Since your contribution centers on notifications and authorization improvements, the
-            homepage now surfaces those capabilities clearly for demos.
-          </p>
-
-          <div className="highlight-list">
-            {highlights.map((item) => (
-              <div key={item} className="highlight-item">
-                <LockKeyhole size={18} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="spotlight-card">
-          <div className="spotlight-metric">
-            <BellRing size={22} />
-            <span>Notification-ready experience</span>
-          </div>
-          <ul className="spotlight-points">
-            <li>Booking approvals and rejections</li>
-            <li>Ticket status changes and technician updates</li>
-            <li>New comments and user preference controls</li>
-          </ul>
-        </div>
-      </div>
-    </section>
 
     <section className="workflow-section">
       <div className="section-header">

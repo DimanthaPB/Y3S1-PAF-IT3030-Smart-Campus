@@ -1,5 +1,6 @@
 package com.smartcampus.paf_project.controllers;
 
+import com.smartcampus.paf_project.dto.UserProfileResponse;
 import com.smartcampus.paf_project.models.Notification;
 import com.smartcampus.paf_project.models.NotificationPreference;
 import com.smartcampus.paf_project.models.User;
@@ -39,6 +40,19 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> getUserNotifications(Principal principal) {
         User user = getUserByEmail(principal);
         return ResponseEntity.ok(notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getId()));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getCurrentUserProfile(Principal principal) {
+        User user = getUserByEmail(principal);
+        return ResponseEntity.ok(new UserProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getAvatarUrl(),
+                user.getRole() == null ? null : user.getRole().name(),
+                user.getAuthProvider() == null ? null : user.getAuthProvider().name()
+        ));
     }
 
     @PutMapping("/me/notifications/{id}/read")
