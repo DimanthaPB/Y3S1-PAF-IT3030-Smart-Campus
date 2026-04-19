@@ -79,7 +79,13 @@ public class BookingService {
         booking.setBookedBy(currentUserEmail);
         booking.setStatus(BookingStatus.PENDING);
 
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        notifyAdminsAboutBookingIfAvailable(
+                "New booking request submitted for " + resolveBookingDisplayName(savedBooking)
+                        + " by " + savedBooking.getBookedBy() + ".",
+                savedBooking.getId()
+        );
+        return savedBooking;
     }
 
     public Booking updateBooking(Long id, Booking updatedBooking, boolean isAdmin, String currentUserEmail) {
@@ -397,5 +403,13 @@ public class BookingService {
         }
 
         notificationEventService.notifyBookingEvent(recipientEmail, message, bookingId);
+    }
+
+    private void notifyAdminsAboutBookingIfAvailable(String message, Long bookingId) {
+        if (notificationEventService == null) {
+            return;
+        }
+
+        notificationEventService.notifyAdminsAboutBooking(message, bookingId);
     }
 }

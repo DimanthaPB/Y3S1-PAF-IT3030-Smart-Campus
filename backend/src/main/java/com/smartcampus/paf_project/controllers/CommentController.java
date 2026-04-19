@@ -74,6 +74,11 @@ public class CommentController {
             );
         }
 
+        notificationEventService.notifyAdminsAboutTicket(
+                "New comment added to ticket \"" + ticket.getTitle() + "\".",
+                ticket.getId()
+        );
+
         return savedComment;
     }
 

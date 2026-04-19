@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, Info, LogOut, Menu, User, X } from 'lucide-react';
+import { Bell, Info, LogOut, Menu, Settings, User, X } from 'lucide-react';
 import NotificationModal from '../Notification/NotificationModal';
-import { getCurrentUserRole } from '../../utils/auth';
+import { getCurrentUserEmail, getCurrentUserRole } from '../../utils/auth';
 import api, { clearStoredToken, getStoredToken } from '../../utils/api';
 import './Navbar.css';
 
@@ -12,16 +12,24 @@ const publicLinks = [
 
 const Navbar = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
+  const [profileData, setProfileData] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const notifRef = useRef(null);
+  const profileRef = useRef(null);
   const location = useLocation();
 
   const isAuthenticated = !!getStoredToken();
   const currentRole = isAuthenticated ? getCurrentUserRole() : '';
+  const currentEmail = isAuthenticated ? getCurrentUserEmail() : '';
   const isAdmin = currentRole === 'ADMIN';
   const isStandardUser = currentRole === 'USER';
+  const displayName = profileData?.name?.trim() || currentEmail || 'Signed in user';
+  const displayRole = profileData?.role || currentRole || 'Authenticated account';
+  const displayAvatarUrl = profileData?.avatarUrl?.trim() || '';
+  const profileInitial = (displayName.charAt(0) || currentRole.charAt(0) || 'U').toUpperCase();
 
   const navigationLinks = useMemo(() => {
     const links = [...publicLinks];
@@ -57,6 +65,21 @@ const Navbar = () => {
     }
   }, [isAuthenticated]);
 
+  const fetchProfile = useCallback(async () => {
+    if (!isAuthenticated) {
+      setProfileData(null);
+      return;
+    }
+
+    try {
+      const { data } = await api.get('/users/me');
+      setProfileData(data);
+    } catch (error) {
+      console.error('Failed to fetch profile', error);
+      setProfileData(null);
+    }
+  }, [isAuthenticated]);
+
   const handleLogout = () => {
     clearStoredToken();
     window.location.href = '/';
@@ -67,6 +90,9 @@ const Navbar = () => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setIsNotifOpen(false);
       }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -75,10 +101,15 @@ const Navbar = () => {
 
   useEffect(() => {
     fetchNotifications();
-  }, [fetchNotifications, location.pathname]);
+    fetchProfile();
+    setIsNotifOpen(false);
+    setIsProfileOpen(false);
+    setMobileMenuOpen(false);
+  }, [fetchNotifications, fetchProfile, location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated) {
+      setProfileData(null);
       return undefined;
     }
 
@@ -132,7 +163,10 @@ const Navbar = () => {
               <div className="notification-wrapper" ref={notifRef}>
                 <button
                   className={`icon-btn ${isNotifOpen ? 'active' : ''}`}
-                  onClick={() => setIsNotifOpen((prev) => !prev)}
+                  onClick={() => {
+                    setIsNotifOpen((prev) => !prev);
+                    setIsProfileOpen(false);
+                  }}
                   title="Notifications"
                   type="button"
                 >
@@ -150,12 +184,52 @@ const Navbar = () => {
                 )}
               </div>
 
-              <button className="icon-btn" title="Profile" type="button">
-                <User size={20} />
-              </button>
-              <button className="icon-btn logout-btn" onClick={handleLogout} title="Logout" type="button">
-                <LogOut size={20} />
-              </button>
+              <div className="profile-wrapper" ref={profileRef}>
+                <button
+                  className={`icon-btn profile-btn ${isProfileOpen ? 'active' : ''}`}
+                  onClick={() => {
+                    setIsProfileOpen((prev) => !prev);
+                    setIsNotifOpen(false);
+                  }}
+                  title="Profile"
+                  type="button"
+                >
+                  {displayAvatarUrl ? (
+                    <img className="profile-image" src={displayAvatarUrl} alt={displayName} />
+                  ) : (
+                    <span className="profile-initial">{profileInitial}</span>
+                  )}
+                </button>
+                {isProfileOpen && (
+                  <div className="profile-menu animate-fade-in">
+                    <div className="profile-menu-header">
+                      <div className="profile-avatar">
+                        {displayAvatarUrl ? (
+                          <img className="profile-avatar-image" src={displayAvatarUrl} alt={displayName} />
+                        ) : (
+                          <User size={16} />
+                        )}
+                      </div>
+                      <div className="profile-copy">
+                        <strong>{displayName}</strong>
+                        <span>{displayRole}</span>
+                        <small>{profileData?.email || currentEmail || 'No email available'}</small>
+                      </div>
+                    </div>
+
+                    <div className="profile-menu-links">
+                      <Link to="/preferences" className="profile-menu-link">
+                        <Settings size={16} />
+                        Preferences
+                      </Link>
+                      <button className="profile-menu-link logout-link" onClick={handleLogout} type="button">
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <Link to="/login" className="btn-primary nav-signin-btn">

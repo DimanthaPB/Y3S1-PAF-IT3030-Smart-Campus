@@ -67,7 +67,12 @@ public class TicketService {
         ticket.setCreatedBy(resolveCurrentUserId(currentUserEmail));
         ticket.setCreatedAt(LocalDateTime.now());
         ticket.setUpdatedAt(LocalDateTime.now());
-        return ticketRepository.save(ticket);
+        Ticket savedTicket = ticketRepository.save(ticket);
+        notificationEventService.notifyAdminsAboutTicket(
+                "New ticket \"" + savedTicket.getTitle() + "\" was created.",
+                savedTicket.getId()
+        );
+        return savedTicket;
     }
 
     public List<Ticket> getAllTickets(boolean isAdmin, String currentUserEmail) {
