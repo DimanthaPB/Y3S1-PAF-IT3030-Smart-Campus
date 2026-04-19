@@ -18,8 +18,10 @@ export const getBookingConflicts = async (filters = {}) => {
   });
 };
 
-export const approveBooking = async (bookingId) => {
-  return await api.put(`${API_BASE_URL}/${bookingId}/approve`);
+export const approveBooking = async (bookingId, reason) => {
+  return await api.put(`${API_BASE_URL}/${bookingId}/approve`, null, {
+    params: { reason },
+  });
 };
 
 export const rejectBooking = async (bookingId, reason) => {

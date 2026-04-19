@@ -13,14 +13,6 @@ function BookingList({ bookings, filters, loading, onBookingUpdated }) {
       );
     }
 
-    if (filters.bookedBy) {
-      filtered = filtered.filter((booking) =>
-        (booking.bookedBy || '')
-          .toLowerCase()
-          .includes(filters.bookedBy.toLowerCase())
-      );
-    }
-
     if (filters.facilityName) {
       filtered = filtered.filter((booking) =>
         (booking.facilityName || booking.resource?.name || '')
@@ -34,6 +26,33 @@ function BookingList({ bookings, filters, loading, onBookingUpdated }) {
         (booking) => booking.bookingDate === filters.bookingDate
       );
     }
+
+    filtered.sort((leftBooking, rightBooking) => {
+      const leftTimestamp = new Date(
+        leftBooking?.bookingDate && leftBooking?.startTime
+          ? `${leftBooking.bookingDate}T${leftBooking.startTime}`
+          : leftBooking?.bookingDate || 0
+      ).getTime();
+      const rightTimestamp = new Date(
+        rightBooking?.bookingDate && rightBooking?.startTime
+          ? `${rightBooking.bookingDate}T${rightBooking.startTime}`
+          : rightBooking?.bookingDate || 0
+      ).getTime();
+
+      if (filters.sortBy === 'oldest') {
+        if (leftTimestamp !== rightTimestamp) {
+          return leftTimestamp - rightTimestamp;
+        }
+
+        return (leftBooking.id ?? 0) - (rightBooking.id ?? 0);
+      }
+
+      if (rightTimestamp !== leftTimestamp) {
+        return rightTimestamp - leftTimestamp;
+      }
+
+      return (rightBooking.id ?? 0) - (leftBooking.id ?? 0);
+    });
 
     return filtered;
   }, [bookings, filters]);

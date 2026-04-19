@@ -182,33 +182,58 @@ function BookingCard({ booking, onBookingUpdated }) {
           </div>
         )}
 
-        {(booking.status === 'REJECTED' && booking.rejectionReason) ||
+        {(booking.status === 'APPROVED' && booking.approvalReason) ||
+        (booking.status === 'REJECTED' && booking.rejectionReason) ||
         (booking.status === 'CANCELLED' && booking.cancelReason) ? (
           <div
             style={{
               background:
-                booking.status === 'REJECTED'
+                booking.status === 'APPROVED'
+                  ? 'rgba(16, 185, 129, 0.08)'
+                  : booking.status === 'REJECTED'
                   ? 'rgba(239, 68, 68, 0.08)'
                   : 'rgba(107, 114, 128, 0.12)',
               borderRadius: '20px',
               padding: '1rem',
               border:
-                booking.status === 'REJECTED'
+                booking.status === 'APPROVED'
+                  ? '1px solid rgba(16, 185, 129, 0.18)'
+                  : booking.status === 'REJECTED'
                   ? '1px solid rgba(239, 68, 68, 0.18)'
                   : '1px solid rgba(156, 163, 175, 0.18)',
               marginBottom: '1.25rem',
             }}
           >
             <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
-              {booking.status === 'REJECTED'
+              {booking.status === 'APPROVED'
+                ? 'Admin Approval Reason'
+                : booking.status === 'REJECTED'
                 ? 'Admin Rejection Reason'
                 : 'Cancellation Reason'}
             </div>
             <div style={{ color: '#ffffff', fontWeight: '600', lineHeight: '1.7' }}>
-              {booking.status === 'REJECTED'
+              {booking.status === 'APPROVED'
+                ? booking.approvalReason
+                : booking.status === 'REJECTED'
                 ? booking.rejectionReason
                 : booking.cancelReason}
             </div>
+            {booking.status === 'CANCELLED' &&
+            (booking.cancelledBy || booking.cancelledByRole || booking.cancelledAt) ? (
+              <div
+                style={{
+                  marginTop: '0.75rem',
+                  color: '#cbd5e1',
+                  fontSize: '0.92rem',
+                  lineHeight: '1.6',
+                }}
+              >
+                Cancelled by: {booking.cancelledBy || 'Unknown'} ({booking.cancelledByRole || 'Unknown'})
+                {booking.cancelledAt
+                  ? ` on ${new Date(booking.cancelledAt).toLocaleString()}`
+                  : ''}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

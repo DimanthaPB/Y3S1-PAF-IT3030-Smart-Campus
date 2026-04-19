@@ -41,9 +41,9 @@ function BookingFilters({ filters, setFilters, filteredCount, totalCount }) {
   const handleClearFilters = () => {
     setFilters({
       status: '',
-      bookedBy: '',
       facilityName: '',
       bookingDate: '',
+      sortBy: 'latest',
     });
   };
 
@@ -108,84 +108,106 @@ function BookingFilters({ filters, setFilters, filteredCount, totalCount }) {
 
       <form onSubmit={handleSearch}>
         <div style={{ marginBottom: '1rem' }}>
-          <label
+          <div
             style={{
-              display: 'block',
-              color: '#dbe4f0',
-              fontWeight: '600',
-              marginBottom: '0.65rem',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '1rem',
+              marginBottom: '1.5rem',
             }}
           >
-            Status
-          </label>
-          <select
-            name="status"
-            value={filters.status}
-            onChange={handleChange}
-            style={selectStyles}
-          >
-            <option
-              value=""
-              style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
-            >
-              All Statuses
-            </option>
-            <option
-              value="PENDING"
-              style={{ backgroundColor: '#0f172a', color: '#fde68a' }}
-            >
-              Pending
-            </option>
-            <option
-              value="APPROVED"
-              style={{ backgroundColor: '#0f172a', color: '#86efac' }}
-            >
-              Approved
-            </option>
-            <option
-              value="REJECTED"
-              style={{ backgroundColor: '#0f172a', color: '#fca5a5' }}
-            >
-              Rejected
-            </option>
-            <option
-              value="CANCELLED"
-              style={{ backgroundColor: '#0f172a', color: '#d1d5db' }}
-            >
-              Cancelled
-            </option>
-          </select>
-        </div>
+            <div style={{ minWidth: 0 }}>
+              <label
+                style={{
+                  display: 'block',
+                  color: '#dbe4f0',
+                  fontWeight: '600',
+                  marginBottom: '0.65rem',
+                }}
+              >
+                Status
+              </label>
+              <select
+                name="status"
+                value={filters.status}
+                onChange={handleChange}
+                style={selectStyles}
+              >
+                <option
+                  value=""
+                  style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
+                >
+                  All Statuses
+                </option>
+                <option
+                  value="PENDING"
+                  style={{ backgroundColor: '#0f172a', color: '#fde68a' }}
+                >
+                  Pending
+                </option>
+                <option
+                  value="APPROVED"
+                  style={{ backgroundColor: '#0f172a', color: '#86efac' }}
+                >
+                  Approved
+                </option>
+                <option
+                  value="REJECTED"
+                  style={{ backgroundColor: '#0f172a', color: '#fca5a5' }}
+                >
+                  Rejected
+                </option>
+                <option
+                  value="CANCELLED"
+                  style={{ backgroundColor: '#0f172a', color: '#d1d5db' }}
+                >
+                  Cancelled
+                </option>
+              </select>
+            </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: '1rem',
-            marginBottom: '1.5rem',
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <label
-              style={{
-                display: 'block',
-                color: '#dbe4f0',
-                fontWeight: '600',
-                marginBottom: '0.65rem',
-              }}
-            >
-              Booked By
-            </label>
-            <input
-              type="text"
-              name="bookedBy"
-              value={filters.bookedBy}
-              onChange={handleChange}
-              style={inputStyles}
-            />
+            <div style={{ minWidth: 0 }}>
+              <label
+                style={{
+                  display: 'block',
+                  color: '#dbe4f0',
+                  fontWeight: '600',
+                  marginBottom: '0.65rem',
+                }}
+              >
+                Sort By
+              </label>
+              <select
+                name="sortBy"
+                value={filters.sortBy}
+                onChange={handleChange}
+                style={selectStyles}
+              >
+                <option
+                  value="latest"
+                  style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
+                >
+                  Latest to Oldest
+                </option>
+                <option
+                  value="oldest"
+                  style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
+                >
+                  Oldest to Latest
+                </option>
+              </select>
+            </div>
           </div>
 
-          <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '1rem',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
             <label
               style={{
                 display: 'block',
@@ -204,26 +226,27 @@ function BookingFilters({ filters, setFilters, filteredCount, totalCount }) {
               style={inputStyles}
             />
           </div>
-        </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label
-            style={{
-              display: 'block',
-              color: '#dbe4f0',
-              fontWeight: '600',
-              marginBottom: '0.65rem',
-            }}
-          >
-            Booking Date
-          </label>
-          <input
-            type="date"
-            name="bookingDate"
-            value={filters.bookingDate}
-            onChange={handleChange}
-            style={inputStyles}
-          />
+            <div style={{ minWidth: 0 }}>
+              <label
+                style={{
+                  display: 'block',
+                  color: '#dbe4f0',
+                  fontWeight: '600',
+                  marginBottom: '0.65rem',
+                }}
+              >
+                Booking Date
+              </label>
+              <input
+                type="date"
+                name="bookingDate"
+                value={filters.bookingDate}
+                onChange={handleChange}
+                style={inputStyles}
+              />
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>

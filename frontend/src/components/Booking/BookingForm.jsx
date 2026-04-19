@@ -6,6 +6,17 @@ import {
 import { getResources } from '../../utils/api';
 import BookingNotice from './BookingNotice';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
+import {
+  getAttendeeValidationMessage,
+  getCurrentTimeString,
+  getMinimumBookingDate,
+  getMinimumBookingTime,
+  getTimeRangeValidationMessage,
+  getTodayDateString,
+  hasTimeOverlap,
+  sanitizeExpectedAttendees,
+  shouldCheckBookingConflict,
+} from '../../utils/bookingValidation';
 
 const formStyles = {
   card: {
@@ -138,7 +149,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     const { name, value } = e.target;
     const sanitizedValue =
       name === 'expectedAttendees'
-        ? value.replace(/[^0-9]/g, '').replace(/^0+/, '')
+        ? sanitizeExpectedAttendees(value)
         : value;
 
     if (name === 'resourceId' || name === 'expectedAttendees') {
@@ -191,8 +202,17 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
   const selectedResourceCapacity = Number(selectedResource?.capacity) || null;
   const availableFromDate = selectedResource?.availableFromDate || '';
   const availableToDate = selectedResource?.availableToDate || '';
+  const todayDate = getTodayDateString();
+  const minimumBookingDate = getMinimumBookingDate(availableFromDate, todayDate);
+  const currentTime = getCurrentTimeString();
   const availabilityStart = selectedResource?.availabilityStart || '';
   const availabilityEnd = selectedResource?.availabilityEnd || '';
+  const minimumBookingTime = getMinimumBookingTime({
+    bookingDate: formData.bookingDate,
+    todayDate,
+    availabilityStart,
+    currentTime,
+  });
   const resourceTypes = [...new Set(resources.map((resource) => resource?.type).filter(Boolean))];
   const activeResources = resources.filter(
     (resource) =>
@@ -207,50 +227,66 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
     Boolean(timeRangeError);
 
   useEffect(() => {
-    const attendeeCount = Number(formData.expectedAttendees);
-
-    if (!formData.expectedAttendees || !selectedResourceCapacity) {
-      setAttendeeError('');
-      return;
-    }
-
-    if (attendeeCount > selectedResourceCapacity) {
-      setAttendeeError(
-        `Attendee count exceeded. Maximum allowed for this resource is ${selectedResourceCapacity}.`
-      );
-      return;
-    }
-
-    setAttendeeError('');
+    setAttendeeError(
+      getAttendeeValidationMessage(formData.expectedAttendees, selectedResourceCapacity)
+    );
   }, [formData.expectedAttendees, selectedResourceCapacity]);
 
   useEffect(() => {
-    if (!formData.startTime || !formData.endTime) {
-      setTimeRangeError('');
-      return;
-    }
+    setTimeRangeError(
+      getTimeRangeValidationMessage({
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        minimumBookingTime,
+      })
+    );
+  }, [formData.endTime, formData.startTime, minimumBookingTime]);
 
-    if (formData.startTime >= formData.endTime) {
-      setTimeRangeError('End time must be later than start time.');
-      return;
+  useEffect(() => {
+    if (formData.bookingDate && formData.bookingDate < minimumBookingDate) {
+      setFormData((previousData) => ({
+        ...previousData,
+        bookingDate: minimumBookingDate,
+      }));
     }
+  }, [formData.bookingDate, minimumBookingDate]);
 
-    setTimeRangeError('');
-  }, [formData.endTime, formData.startTime]);
+  useEffect(() => {
+    if (
+      formData.startTime &&
+      minimumBookingTime &&
+      formData.startTime < minimumBookingTime
+    ) {
+      setFormData((previousData) => ({
+        ...previousData,
+        startTime: minimumBookingTime,
+      }));
+    }
+  }, [formData.startTime, minimumBookingTime]);
+
+  useEffect(() => {
+    if (
+      formData.endTime &&
+      minimumBookingTime &&
+      formData.endTime < minimumBookingTime
+    ) {
+      setFormData((previousData) => ({
+        ...previousData,
+        endTime: minimumBookingTime,
+      }));
+    }
+  }, [formData.endTime, minimumBookingTime]);
 
   useEffect(() => {
     const checkBookingConflict = async () => {
       if (
-        !selectedResource?.id ||
-        !formData.bookingDate ||
-        !formData.startTime ||
-        !formData.endTime
+        !shouldCheckBookingConflict({
+          resourceId: selectedResource?.id,
+          bookingDate: formData.bookingDate,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+        })
       ) {
-        setBookingConflictWarning('');
-        return;
-      }
-
-      if (formData.startTime >= formData.endTime) {
         setBookingConflictWarning('');
         return;
       }
@@ -262,13 +298,12 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
         });
 
         const conflictingBooking = (response.data || []).find((booking) => {
-          const overlaps =
-            booking.startTime &&
-            booking.endTime &&
-            formData.startTime < booking.endTime &&
-            formData.endTime > booking.startTime;
-
-          return overlaps;
+          return hasTimeOverlap({
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            existingStartTime: booking.startTime,
+            existingEndTime: booking.endTime,
+          });
         });
 
         if (conflictingBooking) {
@@ -485,7 +520,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
               value={formData.bookingDate}
               onChange={handleChange}
               required
-              min={availableFromDate || undefined}
+              min={minimumBookingDate}
               max={availableToDate || undefined}
               style={formStyles.input}
             />
@@ -537,7 +572,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
               value={formData.startTime}
               onChange={handleChange}
               required
-              min={availabilityStart || undefined}
+              min={minimumBookingTime || undefined}
               max={availabilityEnd || undefined}
               style={formStyles.input}
             />
@@ -563,7 +598,7 @@ function BookingForm({ onBookingCreated, currentUserEmail }) {
               value={formData.endTime}
               onChange={handleChange}
               required
-              min={availabilityStart || undefined}
+              min={minimumBookingTime || undefined}
               max={availabilityEnd || undefined}
               style={formStyles.input}
             />

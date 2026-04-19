@@ -78,9 +78,9 @@ public class BookingController {
     }
 
     @PutMapping("/{id}/approve")
-    public BookingResponse approveBooking(@PathVariable Long id, Authentication authentication) {
+    public BookingResponse approveBooking(@PathVariable Long id, @RequestParam String reason, Authentication authentication) {
         return bookingService.toResponse(
-                bookingService.approveBooking(id, isAdmin(authentication), authentication.getName())
+                bookingService.approveBooking(id, reason, isAdmin(authentication), authentication.getName())
         );
     }
 

@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { getBookingConflicts, updateBooking } from '../../services/bookingService';
 import { getResources } from '../../utils/api';
 import getApiErrorMessage from '../../utils/getApiErrorMessage';
+import {
+  getAttendeeValidationMessage,
+  getTimeRangeValidationMessage,
+  hasTimeOverlap,
+  sanitizeExpectedAttendees,
+  shouldCheckBookingConflict,
+} from '../../utils/bookingValidation';
 
 const modalStyles = {
   backdrop: {
@@ -116,6 +123,11 @@ function getInitialFormData(booking) {
   };
 }
 
+const selectOptionStyles = {
+  backgroundColor: '#0f172a',
+  color: '#ffffff',
+};
+
 function BookingEditModal({ booking, open, onClose, onSaved }) {
   const [resources, setResources] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
@@ -185,45 +197,29 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
   const selectedResourceCapacity = Number(selectedResource?.capacity) || null;
 
   useEffect(() => {
-    const attendeeCount = Number(formData.expectedAttendees);
-
-    if (!formData.expectedAttendees || !selectedResourceCapacity) {
-      setAttendeeError('');
-      return;
-    }
-
-    if (attendeeCount > selectedResourceCapacity) {
-      setAttendeeError(
-        `Attendee count exceeded. Maximum allowed for this resource is ${selectedResourceCapacity}.`
-      );
-      return;
-    }
-
-    setAttendeeError('');
+    setAttendeeError(
+      getAttendeeValidationMessage(formData.expectedAttendees, selectedResourceCapacity)
+    );
   }, [formData.expectedAttendees, selectedResourceCapacity]);
 
   useEffect(() => {
-    if (!formData.startTime || !formData.endTime) {
-      setTimeRangeError('');
-      return;
-    }
-
-    if (formData.startTime >= formData.endTime) {
-      setTimeRangeError('End time must be later than start time.');
-      return;
-    }
-
-    setTimeRangeError('');
+    setTimeRangeError(
+      getTimeRangeValidationMessage({
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+      })
+    );
   }, [formData.endTime, formData.startTime]);
 
   useEffect(() => {
     const checkBookingConflict = async () => {
       if (
-        !selectedResource?.id ||
-        !formData.bookingDate ||
-        !formData.startTime ||
-        !formData.endTime ||
-        formData.startTime >= formData.endTime
+        !shouldCheckBookingConflict({
+          resourceId: selectedResource?.id,
+          bookingDate: formData.bookingDate,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+        })
       ) {
         setBookingConflictWarning('');
         return;
@@ -240,12 +236,12 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
             return false;
           }
 
-          return (
-            existingBooking.startTime &&
-            existingBooking.endTime &&
-            formData.startTime < existingBooking.endTime &&
-            formData.endTime > existingBooking.startTime
-          );
+          return hasTimeOverlap({
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            existingStartTime: existingBooking.startTime,
+            existingEndTime: existingBooking.endTime,
+          });
         });
 
         setBookingConflictWarning(
@@ -272,7 +268,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
     const { name, value } = event.target;
     const sanitizedValue =
       name === 'expectedAttendees'
-        ? value.replace(/[^0-9]/g, '').replace(/^0+/, '')
+        ? sanitizeExpectedAttendees(value)
         : value;
 
     setFeedback(null);
@@ -329,7 +325,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
       setBusy(true);
       setFeedback(null);
       const response = await updateBooking(booking.id, bookingPayload);
-      await onSaved?.(response.data);
+      await onSaved?.({ type: 'update', booking: response.data });
       onClose?.();
     } catch (error) {
       console.error('Failed to update booking:', error);
@@ -383,11 +379,11 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                 disabled={resourcesLoading || resourceTypes.length === 0 || busy}
                 style={modalStyles.select}
               >
-                <option value="" disabled hidden>
+                <option value="" disabled hidden style={selectOptionStyles}>
                   {resourcesLoading ? 'Loading resource types...' : 'Select a resource type'}
                 </option>
                 {resourceTypes.map((resourceType) => (
-                  <option key={resourceType} value={resourceType}>
+                  <option key={resourceType} value={resourceType} style={selectOptionStyles}>
                     {resourceType}
                   </option>
                 ))}
@@ -403,7 +399,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                 disabled={resourcesLoading || !formData.resourceType || busy}
                 style={modalStyles.select}
               >
-                <option value="" disabled hidden>
+                <option value="" disabled hidden style={selectOptionStyles}>
                   {resourcesLoading
                     ? 'Loading resources...'
                     : !formData.resourceType
@@ -411,7 +407,7 @@ function BookingEditModal({ booking, open, onClose, onSaved }) {
                     : 'Select a resource'}
                 </option>
                 {activeResources.map((resource) => (
-                  <option key={resource.id} value={resource.id}>
+                  <option key={resource.id} value={resource.id} style={selectOptionStyles}>
                     {resource.name} (ID: {resource.id})
                   </option>
                 ))}

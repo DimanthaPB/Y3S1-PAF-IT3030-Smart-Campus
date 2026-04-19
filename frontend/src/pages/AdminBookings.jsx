@@ -13,6 +13,7 @@ import {
   inProgressNoticeStyle,
   summaryCardStyle,
 } from '../components/Booking/bookingStyles';
+import BookingActionModal from '../components/Booking/BookingActionModal';
 import getApiErrorMessage from '../utils/getApiErrorMessage';
 
 const pageStyles = {
@@ -108,18 +109,38 @@ const bookingInfoValueStyles = {
   whiteSpace: 'normal',
 };
 
+const getBookingActivityTimestamp = (booking) => {
+  const timestampCandidates = [
+    booking?.updatedAt,
+    booking?.createdAt,
+  ];
+
+  for (const candidate of timestampCandidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    const timestamp = new Date(candidate).getTime();
+    if (!Number.isNaN(timestamp)) {
+      return timestamp;
+    }
+  }
+
+  return 0;
+};
+
 function AdminBookings() {
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeAction, setActiveAction] = useState(null);
+  const [actionModal, setActionModal] = useState(null);
+  const [actionError, setActionError] = useState('');
 
   const [filters, setFilters] = useState({
     status: '',
     bookedBy: '',
     facilityName: '',
     bookingDate: '',
-    bookingDateFrom: '',
-    bookingDateTo: '',
     sortBy: 'newest',
   });
 
@@ -172,20 +193,6 @@ function AdminBookings() {
       );
     }
 
-    if (filters.bookingDateFrom) {
-      filtered = filtered.filter(
-        (booking) =>
-          booking.bookingDate && booking.bookingDate >= filters.bookingDateFrom
-      );
-    }
-
-    if (filters.bookingDateTo) {
-      filtered = filtered.filter(
-        (booking) =>
-          booking.bookingDate && booking.bookingDate <= filters.bookingDateTo
-      );
-    }
-
     const statusOrder = {
       PENDING: 0,
       APPROVED: 1,
@@ -194,8 +201,33 @@ function AdminBookings() {
     };
 
     filtered.sort((leftBooking, rightBooking) => {
+      const leftActivityTimestamp = getBookingActivityTimestamp(leftBooking);
+      const rightActivityTimestamp = getBookingActivityTimestamp(rightBooking);
+      const leftBookingDateTimestamp = new Date(
+        leftBooking?.bookingDate && leftBooking?.startTime
+          ? `${leftBooking.bookingDate}T${leftBooking.startTime}`
+          : leftBooking?.bookingDate || 0
+      ).getTime();
+      const rightBookingDateTimestamp = new Date(
+        rightBooking?.bookingDate && rightBooking?.startTime
+          ? `${rightBooking.bookingDate}T${rightBooking.startTime}`
+          : rightBooking?.bookingDate || 0
+      ).getTime();
+
+      if (filters.sortBy === 'latestActivity') {
+        if (rightActivityTimestamp !== leftActivityTimestamp) {
+          return rightActivityTimestamp - leftActivityTimestamp;
+        }
+
+        return (rightBooking.id ?? 0) - (leftBooking.id ?? 0);
+      }
+
       if (filters.sortBy === 'oldest') {
-        return new Date(leftBooking.bookingDate) - new Date(rightBooking.bookingDate);
+        if (leftBookingDateTimestamp !== rightBookingDateTimestamp) {
+          return leftBookingDateTimestamp - rightBookingDateTimestamp;
+        }
+
+        return (leftBooking.id ?? 0) - (rightBooking.id ?? 0);
       }
 
       if (filters.sortBy === 'status') {
@@ -213,82 +245,77 @@ function AdminBookings() {
         );
       }
 
-      return new Date(rightBooking.bookingDate) - new Date(leftBooking.bookingDate);
+      if (rightBookingDateTimestamp !== leftBookingDateTimestamp) {
+        return rightBookingDateTimestamp - leftBookingDateTimestamp;
+      }
+
+      return (rightBooking.id ?? 0) - (leftBooking.id ?? 0);
     });
 
     return filtered;
   }, [allBookings, filters]);
 
-  const handleApprove = async (id) => {
+  const openActionModal = (type, booking) => {
+    if (activeAction) return;
+    setActionError('');
+    setActionModal({ type, booking });
+  };
+
+  const closeActionModal = () => {
+    if (activeAction) return;
+    setActionError('');
+    setActionModal(null);
+  };
+
+  const handleApprove = async (booking, reason) => {
     if (activeAction) return;
 
-    const confirmed = window.confirm(
-      'Are you sure you want to approve this booking?'
-    );
-    if (!confirmed) return;
-
     try {
-      setActiveAction({ id, type: 'approve' });
-      await approveBooking(id);
+      setActionError('');
+      setActiveAction({ id: booking.id, type: 'approve' });
+      await approveBooking(booking.id, reason);
+      setActionModal(null);
       alert('Booking approved successfully');
       await fetchBookings();
     } catch (error) {
       console.error(error);
-      alert(getApiErrorMessage(error, 'Failed to approve booking'));
+      setActionError(getApiErrorMessage(error, 'Failed to approve booking'));
     } finally {
       setActiveAction(null);
     }
   };
 
-  const handleReject = async (id) => {
+  const handleReject = async (booking, reason) => {
     if (activeAction) return;
 
-    const confirmed = window.confirm(
-      'Are you sure you want to reject this booking?'
-    );
-    if (!confirmed) return;
-
-    const reason = prompt('Enter rejection reason:');
-    if (!reason || !reason.trim()) {
-      alert('Rejection reason is required');
-      return;
-    }
-
     try {
-      setActiveAction({ id, type: 'reject' });
-      await rejectBooking(id, reason);
+      setActionError('');
+      setActiveAction({ id: booking.id, type: 'reject' });
+      await rejectBooking(booking.id, reason);
+      setActionModal(null);
       alert('Booking rejected successfully');
       await fetchBookings();
     } catch (error) {
       console.error('Reject failed:', error);
-      alert(getApiErrorMessage(error, 'Failed to reject booking'));
+      setActionError(getApiErrorMessage(error, 'Failed to reject booking'));
     } finally {
       setActiveAction(null);
     }
   };
 
-  const handleCancel = async (id) => {
+  const handleCancel = async (booking, reason) => {
     if (activeAction) return;
 
-    const confirmed = window.confirm(
-      'Are you sure you want to cancel this booking?'
-    );
-    if (!confirmed) return;
-
-    const reason = prompt('Enter cancellation reason:');
-    if (!reason || !reason.trim()) {
-      alert('Cancellation reason is required');
-      return;
-    }
-
     try {
-      setActiveAction({ id, type: 'cancel' });
-      await cancelBooking(id, reason);
+      setActionError('');
+      setActiveAction({ id: booking.id, type: 'cancel' });
+      await cancelBooking(booking.id, reason);
+      setActionModal(null);
       alert('Booking cancelled successfully');
       await fetchBookings();
     } catch (error) {
       console.error('Cancel failed:', error);
-      alert(getApiErrorMessage(error, 'Failed to cancel booking'));
+      setActionError(getApiErrorMessage(error, 'Failed to cancel booking'));
     } finally {
       setActiveAction(null);
     }
@@ -309,10 +336,28 @@ function AdminBookings() {
       bookedBy: '',
       facilityName: '',
       bookingDate: '',
-      bookingDateFrom: '',
-      bookingDateTo: '',
       sortBy: 'newest',
     });
+  };
+
+  const confirmAction = async (reason) => {
+    if (!actionModal?.booking) {
+      return;
+    }
+
+    if (actionModal.type === 'approve') {
+      await handleApprove(actionModal.booking, reason);
+      return;
+    }
+
+    if (actionModal.type === 'reject') {
+      await handleReject(actionModal.booking, reason);
+      return;
+    }
+
+    if (actionModal.type === 'cancel') {
+      await handleCancel(actionModal.booking, reason);
+    }
   };
 
   if (loading) {
@@ -513,6 +558,9 @@ function AdminBookings() {
               <option value="oldest" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
                 Oldest First
               </option>
+              <option value="latestActivity" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                Latest Activity
+              </option>
               <option value="status" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
                 Status Priority
               </option>
@@ -555,27 +603,6 @@ function AdminBookings() {
             />
           </div>
 
-          <div style={{ minWidth: 0 }}>
-            <label>Date From</label>
-            <input
-              type="date"
-              name="bookingDateFrom"
-              value={filters.bookingDateFrom}
-              onChange={handleFilterChange}
-              style={filterInputStyles}
-            />
-          </div>
-
-          <div style={{ minWidth: 0 }}>
-            <label>Date To</label>
-            <input
-              type="date"
-              name="bookingDateTo"
-              value={filters.bookingDateTo}
-              onChange={handleFilterChange}
-              style={filterInputStyles}
-            />
-          </div>
         </div>
 
       <button
@@ -751,25 +778,32 @@ function AdminBookings() {
               </div>
             )}
 
-            {(booking.status === 'REJECTED' && booking.rejectionReason) ||
+            {(booking.status === 'APPROVED' && booking.approvalReason) ||
+            (booking.status === 'REJECTED' && booking.rejectionReason) ||
             (booking.status === 'CANCELLED' && booking.cancelReason) ? (
               <div
                 style={{
                   background:
-                    booking.status === 'REJECTED'
+                    booking.status === 'APPROVED'
+                      ? 'rgba(16, 185, 129, 0.08)'
+                      : booking.status === 'REJECTED'
                       ? 'rgba(239, 68, 68, 0.08)'
                       : 'rgba(107, 114, 128, 0.12)',
                   borderRadius: '20px',
                   padding: '1rem',
                   border:
-                    booking.status === 'REJECTED'
+                    booking.status === 'APPROVED'
+                      ? '1px solid rgba(16, 185, 129, 0.18)'
+                      : booking.status === 'REJECTED'
                       ? '1px solid rgba(239, 68, 68, 0.18)'
                       : '1px solid rgba(156, 163, 175, 0.18)',
                   marginTop: '1rem',
                 }}
               >
                 <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
-                  {booking.status === 'REJECTED'
+                  {booking.status === 'APPROVED'
+                    ? 'Approval Reason'
+                    : booking.status === 'REJECTED'
                     ? 'Rejection Reason'
                     : 'Cancellation Reason'}
                 </div>
@@ -780,10 +814,28 @@ function AdminBookings() {
                     lineHeight: '1.7',
                   }}
                 >
-                  {booking.status === 'REJECTED'
+                  {booking.status === 'APPROVED'
+                    ? booking.approvalReason
+                    : booking.status === 'REJECTED'
                     ? booking.rejectionReason
                     : booking.cancelReason}
                 </div>
+                {booking.status === 'CANCELLED' &&
+                (booking.cancelledBy || booking.cancelledByRole || booking.cancelledAt) ? (
+                  <div
+                    style={{
+                      marginTop: '0.75rem',
+                      color: '#cbd5e1',
+                      fontSize: '0.92rem',
+                      lineHeight: '1.6',
+                    }}
+                  >
+                    Cancelled by: {booking.cancelledBy || 'Unknown'} ({booking.cancelledByRole || 'Unknown'})
+                    {booking.cancelledAt
+                      ? ` on ${new Date(booking.cancelledAt).toLocaleString()}`
+                      : ''}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -799,7 +851,7 @@ function AdminBookings() {
                 <>
                   <button
                     disabled={Boolean(activeAction)}
-                    onClick={() => handleApprove(booking.id)}
+                    onClick={() => openActionModal('approve', booking)}
                     onMouseEnter={(e) => {
                       if (activeAction) return;
                       e.target.style.background = 'rgba(16, 185, 129, 0.32)';
@@ -823,7 +875,7 @@ function AdminBookings() {
 
                   <button
                     disabled={Boolean(activeAction)}
-                    onClick={() => handleReject(booking.id)}
+                    onClick={() => openActionModal('reject', booking)}
                     onMouseEnter={(e) => {
                       if (activeAction) return;
                       e.target.style.background = 'rgba(239, 68, 68, 0.3)';
@@ -850,7 +902,7 @@ function AdminBookings() {
               {booking.status === 'APPROVED' && (
                 <button
                   disabled={Boolean(activeAction)}
-                  onClick={() => handleCancel(booking.id)}
+                  onClick={() => openActionModal('cancel', booking)}
                   onMouseEnter={(e) => {
                     if (activeAction) return;
                     e.target.style.background = 'rgba(107, 114, 128, 0.32)';
@@ -876,6 +928,84 @@ function AdminBookings() {
           </div>
         ))
       )}
+
+      <BookingActionModal
+        open={Boolean(actionModal?.booking)}
+        title={
+          actionModal?.type === 'approve'
+            ? 'Approve booking'
+            : actionModal?.type === 'reject'
+            ? 'Reject booking'
+            : 'Cancel booking'
+        }
+        description={
+          actionModal?.type === 'approve'
+            ? 'Review the booking details and add an approval reason before confirming.'
+            : actionModal?.type === 'reject'
+            ? 'Review the booking details and add a rejection reason before confirming.'
+            : 'Review the booking details and add a cancellation reason before confirming.'
+        }
+        confirmLabel={
+          actionModal?.type === 'approve'
+            ? 'Approve Booking'
+            : actionModal?.type === 'reject'
+            ? 'Reject Booking'
+            : 'Cancel Booking'
+        }
+        requireReason
+        reasonLabel={
+          actionModal?.type === 'approve'
+            ? 'Approval reason'
+            : actionModal?.type === 'reject'
+            ? 'Rejection reason'
+            : 'Cancellation reason'
+        }
+        reasonPlaceholder={
+          actionModal?.type === 'approve'
+            ? 'Explain why this booking is being approved'
+            : actionModal?.type === 'reject'
+            ? 'Explain why this booking is being rejected'
+            : 'Explain why this booking is being cancelled'
+        }
+        confirmTone={
+          actionModal?.type === 'approve'
+            ? 'success'
+            : actionModal?.type === 'reject'
+            ? 'danger'
+            : 'neutral'
+        }
+        busy={Boolean(activeAction)}
+        busyLabel={
+          activeAction?.type === 'approve'
+            ? 'Approving...'
+            : activeAction?.type === 'reject'
+            ? 'Rejecting...'
+            : 'Cancelling...'
+        }
+        externalError={actionError}
+        onClose={closeActionModal}
+        onConfirm={confirmAction}
+      >
+        {actionModal?.booking ? (
+          <div
+            style={{
+              borderRadius: '18px',
+              padding: '1rem',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#dbe4f0',
+              lineHeight: '1.7',
+            }}
+          >
+            <div><strong>Facility:</strong> {actionModal.booking.facilityName || actionModal.booking.resource?.name || 'Not Available'}</div>
+            <div><strong>User:</strong> {actionModal.booking.userName || actionModal.booking.userEmail || actionModal.booking.bookedBy || 'Not Available'}</div>
+            <div><strong>Date:</strong> {actionModal.booking.bookingDate || 'Not Available'}</div>
+            <div><strong>Time:</strong> {actionModal.booking.startTime || '--'} - {actionModal.booking.endTime || '--'}</div>
+            <div><strong>Attendees:</strong> {actionModal.booking.expectedAttendees ?? 'Not Available'}</div>
+            <div><strong>Purpose:</strong> {actionModal.booking.purpose || 'Not Available'}</div>
+          </div>
+        ) : null}
+      </BookingActionModal>
     </div>
   );
 }
