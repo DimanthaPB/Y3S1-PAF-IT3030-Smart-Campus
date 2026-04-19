@@ -29,6 +29,9 @@ public class BookingService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private com.smartcampus.paf_project.service.NotificationEventService notificationEventService;
+
     public Booking createBooking(Booking booking, String currentUserEmail) {
         if (currentUserEmail == null || currentUserEmail.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You must be logged in to create a booking.");
@@ -194,7 +197,13 @@ public class BookingService {
         }
 
         booking.setStatus(BookingStatus.APPROVED);
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        notifyBookingEventIfAvailable(
+                savedBooking.getBookedBy(),
+                "Your booking for " + resolveBookingDisplayName(savedBooking) + " was approved.",
+                savedBooking.getId()
+        );
+        return savedBooking;
     }
 
     public Booking rejectBooking(Long id, String rejectionReason, boolean isAdmin, String currentUserEmail) {
@@ -211,7 +220,13 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.REJECTED);
         booking.setRejectionReason(rejectionReason.trim());
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        notifyBookingEventIfAvailable(
+                savedBooking.getBookedBy(),
+                "Your booking for " + resolveBookingDisplayName(savedBooking) + " was rejected.",
+                savedBooking.getId()
+        );
+        return savedBooking;
     }
 
     public Booking cancelBooking(Long id, String cancelReason, boolean isAdmin, String currentUserEmail) {
@@ -227,7 +242,13 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelReason(cancelReason.trim());
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        notifyBookingEventIfAvailable(
+                savedBooking.getBookedBy(),
+                "Your booking for " + resolveBookingDisplayName(savedBooking) + " was cancelled.",
+                savedBooking.getId()
+        );
+        return savedBooking;
     }
 
     public List<Booking> getBookingsByUser(String bookedBy, boolean isAdmin, String currentUserEmail) {
@@ -358,5 +379,23 @@ public class BookingService {
         return bookings.stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private String resolveBookingDisplayName(Booking booking) {
+        if (booking.getFacilityName() != null && !booking.getFacilityName().isBlank()) {
+            return booking.getFacilityName();
+        }
+        if (booking.getResource() != null && booking.getResource().getName() != null) {
+            return booking.getResource().getName();
+        }
+        return "your selected resource";
+    }
+
+    private void notifyBookingEventIfAvailable(String recipientEmail, String message, Long bookingId) {
+        if (notificationEventService == null) {
+            return;
+        }
+
+        notificationEventService.notifyBookingEvent(recipientEmail, message, bookingId);
     }
 }

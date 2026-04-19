@@ -33,6 +33,9 @@ public class TicketService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationEventService notificationEventService;
+
     public Optional<Ticket> findById(Long id) {
         return ticketRepository.findById(id);
     }
@@ -114,7 +117,13 @@ public class TicketService {
 
         ticket.setStatus(normalizedStatus);
         ticket.setUpdatedAt(LocalDateTime.now());
-        return ticketRepository.save(ticket);
+        Ticket savedTicket = ticketRepository.save(ticket);
+        notificationEventService.notifyTicketEventByUserId(
+                savedTicket.getCreatedBy(),
+                "Your ticket \"" + savedTicket.getTitle() + "\" moved to " + normalizedStatus + ".",
+                savedTicket.getId()
+        );
+        return savedTicket;
     }
 
     public Ticket updateTicketAssignment(Long id, String assignedTo) {

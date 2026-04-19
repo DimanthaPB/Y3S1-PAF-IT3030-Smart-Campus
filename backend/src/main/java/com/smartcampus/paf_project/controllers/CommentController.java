@@ -11,8 +11,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.smartcampus.paf_project.models.Comment;
 import com.smartcampus.paf_project.models.Ticket;
+import com.smartcampus.paf_project.models.User;
+import com.smartcampus.paf_project.service.NotificationEventService;
 import com.smartcampus.paf_project.repositories.CommentRepository;
 import com.smartcampus.paf_project.repositories.TicketRepository;
+import com.smartcampus.paf_project.repositories.UserRepository;
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
@@ -24,6 +27,12 @@ public class CommentController {
 
     @Autowired
     private TicketRepository ticketRepository;
+
+    @Autowired
+    private NotificationEventService notificationEventService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @GetMapping
     public List<Comment> getTicketComments(@PathVariable Long ticketId) {
@@ -50,7 +59,22 @@ public class CommentController {
         comment.setCreatedBy(createdBy.trim());
         comment.setCreatedAt(LocalDateTime.now());
         comment.setTicket(ticket);
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+
+        String normalizedCreatedBy = createdBy.trim();
+        User ticketOwner = ticket.getCreatedBy() == null
+                ? null
+                : userRepository.findById(ticket.getCreatedBy()).orElse(null);
+
+        if (ticketOwner != null && !ticketOwner.getEmail().equalsIgnoreCase(normalizedCreatedBy)) {
+            notificationEventService.notifyTicketEventByUserId(
+                    ticket.getCreatedBy(),
+                    "New comment added to your ticket \"" + ticket.getTitle() + "\".",
+                    ticket.getId()
+            );
+        }
+
+        return savedComment;
     }
 
     @PutMapping("/{commentId}")
