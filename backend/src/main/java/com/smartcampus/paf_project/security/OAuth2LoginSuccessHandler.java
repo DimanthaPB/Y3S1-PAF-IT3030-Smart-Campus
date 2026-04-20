@@ -57,9 +57,27 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             user.setNotificationPreference(prefs);
 
             userRepository.save(user);
-        } else if (user.getAuthProvider() == null) {
-            user.setAuthProvider(AuthProvider.GOOGLE);
-            userRepository.save(user);
+        } else {
+            boolean changed = false;
+
+            if (user.getAuthProvider() == null) {
+                user.setAuthProvider(AuthProvider.GOOGLE);
+                changed = true;
+            }
+
+            if (name != null && !name.isBlank() && !name.equals(user.getName())) {
+                user.setName(name);
+                changed = true;
+            }
+
+            if (avatar != null && !avatar.isBlank() && !avatar.equals(user.getAvatarUrl())) {
+                user.setAvatarUrl(avatar);
+                changed = true;
+            }
+
+            if (changed) {
+                userRepository.save(user);
+            }
         }
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());

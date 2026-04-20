@@ -5,6 +5,7 @@ import Navbar from './components/Navigation/Navbar';
 import TechTicketList from './components/Ticket/TechTicketList';
 import TicketList from './components/Ticket/TicketList';
 import AdminBookings from './pages/AdminBookings';
+import AdminUsers from './pages/AdminUsers';
 import Bookings from './pages/Bookings';
 import OAuth2RedirectHandler from './pages/OAuth2RedirectHandler';
 import Preferences from './pages/Preferences';
@@ -86,6 +87,14 @@ function App() {
               element={(
                 <RoleRoute allowedRoles={['ADMIN']}>
                   <Resources />
+                </RoleRoute>
+              )}
+            />
+            <Route
+              path="/admin/users"
+              element={(
+                <RoleRoute allowedRoles={['ADMIN']}>
+                  <AdminUsers />
                 </RoleRoute>
               )}
             />
