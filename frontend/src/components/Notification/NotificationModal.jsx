@@ -139,6 +139,10 @@ const NotificationModal = ({
       return currentRole === 'ADMIN' ? '/tech/tickets' : '/tickets';
     }
 
+    if (notification.type === 'SYSTEM') {
+      return currentRole === 'ADMIN' ? '/resources' : '/catalogue';
+    }
+
     return '/preferences';
   };
 

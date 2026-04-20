@@ -2,6 +2,7 @@ package com.smartcampus.paf_project.controllers;
 
 import com.smartcampus.paf_project.models.Resource;
 import com.smartcampus.paf_project.repositories.ResourceRepository;
+import com.smartcampus.paf_project.service.NotificationEventService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,6 +29,9 @@ class ResourceControllerTest {
 
     @Mock
     private ResourceRepository resourceRepository;
+
+    @Mock
+    private NotificationEventService notificationEventService;
 
     @InjectMocks
     private ResourceController resourceController;
@@ -119,6 +123,36 @@ class ResourceControllerTest {
         assertEquals(403, exception.getStatusCode().value());
         assertTrue(exception.getReason().contains("Admin access"));
         verify(resourceRepository, never()).save(resource);
+        verify(notificationEventService, never()).notifyUsersAboutSystemEvent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void adminCreateResourceNotifiesUsers() {
+        Resource resource = new Resource();
+        resource.setName("Innovation Lab");
+
+        Resource savedResource = new Resource();
+        savedResource.setId(10L);
+        savedResource.setName("Innovation Lab");
+
+        when(resourceRepository.save(resource)).thenReturn(savedResource);
+
+        ResponseEntity<Resource> response = resourceController.createResource(
+                resource,
+                new UsernamePasswordAuthenticationToken(
+                        "admin@example.com",
+                        "token",
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                )
+        );
+
+        assertEquals(201, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals(10L, response.getBody().getId());
+        verify(notificationEventService).notifyUsersAboutSystemEvent(
+                "Innovation Lab is now available for users.",
+                10L
+        );
     }
 
     @Test

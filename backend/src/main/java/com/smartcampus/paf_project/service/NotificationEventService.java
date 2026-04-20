@@ -67,6 +67,10 @@ public class NotificationEventService {
         notifyUsersByRole(Role.ADMIN, message, "TICKET", ticketId, NotificationPreference::isReceiveTicketAlerts);
     }
 
+    public void notifyUsersAboutSystemEvent(String message, Long referenceId) {
+        notifyUsersByRole(Role.USER, message, "SYSTEM", referenceId, NotificationPreference::isReceiveSystemAlerts);
+    }
+
     private Optional<User> findUserByEmail(String email) {
         if (email == null || email.isBlank()) {
             return Optional.empty();

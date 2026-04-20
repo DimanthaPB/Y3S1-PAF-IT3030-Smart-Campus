@@ -2,6 +2,7 @@ package com.smartcampus.paf_project.controllers;
 
 import com.smartcampus.paf_project.models.Resource;
 import com.smartcampus.paf_project.repositories.ResourceRepository;
+import com.smartcampus.paf_project.service.NotificationEventService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
@@ -20,9 +21,11 @@ import java.util.Optional;
 public class ResourceController {
 
     private final ResourceRepository resourceRepository;
+    private final NotificationEventService notificationEventService;
 
-    public ResourceController(ResourceRepository resourceRepository) {
+    public ResourceController(ResourceRepository resourceRepository, NotificationEventService notificationEventService) {
         this.resourceRepository = resourceRepository;
+        this.notificationEventService = notificationEventService;
     }
 
     @GetMapping
@@ -117,6 +120,10 @@ public class ResourceController {
     ) {
         requireAdmin(authentication);
         Resource savedResource = resourceRepository.save(resource);
+        notificationEventService.notifyUsersAboutSystemEvent(
+                buildResourceCreatedMessage(savedResource),
+                savedResource.getId()
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(savedResource);
     }
 
@@ -175,5 +182,12 @@ public class ResourceController {
         }
 
         return resourceRepository.findByStatus(Resource.ResourceStatus.ACTIVE);
+    }
+
+    private String buildResourceCreatedMessage(Resource resource) {
+        String resourceName = resource.getName() == null || resource.getName().isBlank()
+                ? "A new resource"
+                : resource.getName();
+        return resourceName + " is now available for users.";
     }
 }
