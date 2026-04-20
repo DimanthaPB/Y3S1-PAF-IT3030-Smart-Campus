@@ -17,6 +17,7 @@ const Navbar = () => {
   const [notifications, setNotifications] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAvatarBroken, setIsAvatarBroken] = useState(false);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
   const location = useLocation();
@@ -29,6 +30,7 @@ const Navbar = () => {
   const displayName = profileData?.name?.trim() || currentEmail || 'Signed in user';
   const displayRole = profileData?.role || currentRole || 'Authenticated account';
   const displayAvatarUrl = profileData?.avatarUrl?.trim() || '';
+  const shouldShowAvatarImage = Boolean(displayAvatarUrl) && !isAvatarBroken;
   const profileInitial = (displayName.charAt(0) || currentRole.charAt(0) || 'U').toUpperCase();
 
   const navigationLinks = useMemo(() => {
@@ -39,6 +41,7 @@ const Navbar = () => {
         links.push({ to: '/admin/bookings', label: 'Bookings' });
         links.push({ to: '/resources', label: 'Resources' });
         links.push({ to: '/tech/tickets', label: 'Tickets' });
+        links.push({ to: '/admin/users', label: 'Users' });
       } else if (isStandardUser) {
         links.push({ to: '/bookings', label: 'My Bookings' });
         links.push({ to: '/catalogue', label: 'Catalogue' });
@@ -74,6 +77,7 @@ const Navbar = () => {
     try {
       const { data } = await api.get('/users/me');
       setProfileData(data);
+      setIsAvatarBroken(false);
     } catch (error) {
       console.error('Failed to fetch profile', error);
       setProfileData(null);
@@ -194,8 +198,13 @@ const Navbar = () => {
                   title="Profile"
                   type="button"
                 >
-                  {displayAvatarUrl ? (
-                    <img className="profile-image" src={displayAvatarUrl} alt={displayName} />
+                  {shouldShowAvatarImage ? (
+                    <img
+                      className="profile-image"
+                      src={displayAvatarUrl}
+                      alt={displayName}
+                      onError={() => setIsAvatarBroken(true)}
+                    />
                   ) : (
                     <span className="profile-initial">{profileInitial}</span>
                   )}
@@ -204,8 +213,13 @@ const Navbar = () => {
                   <div className="profile-menu animate-fade-in">
                     <div className="profile-menu-header">
                       <div className="profile-avatar">
-                        {displayAvatarUrl ? (
-                          <img className="profile-avatar-image" src={displayAvatarUrl} alt={displayName} />
+                        {shouldShowAvatarImage ? (
+                          <img
+                            className="profile-avatar-image"
+                            src={displayAvatarUrl}
+                            alt={displayName}
+                            onError={() => setIsAvatarBroken(true)}
+                          />
                         ) : (
                           <User size={16} />
                         )}
