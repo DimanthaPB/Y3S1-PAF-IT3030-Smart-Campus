@@ -281,7 +281,7 @@ Backend tests can be run with:
 
 ```powershell
 cd backend
-.\mvnw.cmd test
+./mvnw spring-boot:run
 ```
 
 Example focused test:
