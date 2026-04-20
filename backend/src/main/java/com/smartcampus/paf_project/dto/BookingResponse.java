@@ -30,7 +30,7 @@ public record BookingResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static BookingResponse from(Booking booking, String userName) {
+    public static BookingResponse from(Booking booking, String userName, String cancelledByDisplayName) {
         return new BookingResponse(
                 booking.getId(),
                 booking.getFacilityName(),
@@ -46,7 +46,7 @@ public record BookingResponse(
                 booking.getApprovalReason(),
                 booking.getRejectionReason(),
                 booking.getCancelReason(),
-                booking.getCancelledBy(),
+                cancelledByDisplayName,
                 booking.getCancelledByRole(),
                 booking.getCancelledAt(),
                 booking.getStatus(),
