@@ -275,7 +275,7 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelReason(cancelReason.trim());
-        booking.setCancelledBy(currentUserEmail);
+        booking.setCancelledBy(resolveCancelledByDisplayName(currentUserEmail, isAdmin));
         booking.setCancelledByRole(isAdmin ? "ADMIN" : "USER");
         booking.setCancelledAt(LocalDateTime.now());
         booking.setUpdatedAt(LocalDateTime.now());
@@ -434,6 +434,7 @@ public class BookingService {
 
     public BookingResponse toResponse(Booking booking) {
         String userName = null;
+        String cancelledByDisplayName = booking.getCancelledBy();
 
         if (booking.getBookedBy() != null && !booking.getBookedBy().isBlank()) {
             userName = userRepository.findByEmail(booking.getBookedBy())
@@ -441,7 +442,14 @@ public class BookingService {
                     .orElse(null);
         }
 
-        return BookingResponse.from(booking, userName);
+        if (booking.getCancelledBy() != null && !booking.getCancelledBy().isBlank()) {
+            cancelledByDisplayName = sanitizeCancelledByDisplayName(
+                    booking.getCancelledBy(),
+                    booking.getCancelledByRole()
+            );
+        }
+
+        return BookingResponse.from(booking, userName, cancelledByDisplayName);
     }
 
     public List<BookingResponse> toResponses(List<Booking> bookings) {
@@ -474,5 +482,43 @@ public class BookingService {
         }
 
         notificationEventService.notifyAdminsAboutBooking(message, bookingId);
+    }
+
+    private String resolveCancelledByDisplayName(String currentUserEmail, boolean isAdmin) {
+        if (isAdmin) {
+            return "Admin";
+        }
+
+        if (currentUserEmail == null || currentUserEmail.isBlank()) {
+            return "User";
+        }
+
+        return userRepository.findByEmail(currentUserEmail)
+                .map(user -> {
+                    String name = user.getName();
+                    return (name == null || name.isBlank()) ? "User" : name.trim();
+                })
+                .orElse("User");
+    }
+
+    private String sanitizeCancelledByDisplayName(String cancelledBy, String cancelledByRole) {
+        if (cancelledBy == null || cancelledBy.isBlank()) {
+            return "ADMIN".equalsIgnoreCase(cancelledByRole) ? "Admin" : "User";
+        }
+
+        if ("ADMIN".equalsIgnoreCase(cancelledByRole)) {
+            return "Admin";
+        }
+
+        if (!cancelledBy.contains("@")) {
+            return cancelledBy;
+        }
+
+        return userRepository.findByEmail(cancelledBy)
+                .map(user -> {
+                    String name = user.getName();
+                    return (name == null || name.isBlank()) ? "User" : name.trim();
+                })
+                .orElse("User");
     }
 }
