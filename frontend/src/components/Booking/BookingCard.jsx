@@ -228,7 +228,7 @@ function BookingCard({ booking, onBookingUpdated }) {
                   lineHeight: '1.6',
                 }}
               >
-                Cancelled by: {booking.cancelledBy || 'Unknown'} ({booking.cancelledByRole || 'Unknown'})
+                Cancelled by: {booking.cancelledBy || 'Unknown'}
                 {booking.cancelledAt
                   ? ` on ${new Date(booking.cancelledAt).toLocaleString()}`
                   : ''}
